@@ -1,0 +1,112 @@
+#ifndef AirRide_h
+#define AirRide_h
+
+#include <Arduino.h>
+#include "airsettings.h"
+
+#define IDLEMODE 0
+#define PSIMODE 1
+#define HEIGHTMODE 2
+#define ON 1
+#define OFF 0
+
+// pressure sensor hardware class
+class psensor
+{
+public:
+    int psi();
+    void setPin(uint8_t pin);
+
+private:
+    uint8_t _pin;
+};
+
+// height sensor hardware class
+class hsensor
+{
+public:
+    int h_mm();
+    void setPin(uint8_t pin);
+
+private:
+    uint8_t _pin;
+};
+
+// pressure valve output class
+class pvalve
+{
+public:
+    void setState(bool state);
+    bool getState();
+    void setPin(uint8_t pin);
+
+private:
+    uint8_t _pin;
+    bool _state = 0;
+};
+
+// class for controlling the compressor motor
+class motor
+{
+public:
+    void setState(bool state);
+    bool getState();
+    void setPin(uint8_t pin);
+
+private:
+    uint8_t _pin;
+    bool _state = 0;
+};
+
+// compressor object control class
+// update() MUST be run regularly, to keep PID loop runnung
+// defaults setpoint to
+class compressor
+{
+public:
+    compressor(uint8_t motor_control_pin, uint8_t pres_sensor_pin);
+    void setPressure(int psi); // running pressure for compressor to maintain
+    int getPressure();         // get current PSI in tank on sensor
+    bool isFilling();          // fetch motor state
+    int get_state();
+    void setIdlePressure(int psi); // idle pressure to maintain
+    void start();                  // start regulating tank pressure
+    void start_idle();             // start idling
+    void stop();                   // stop regulating tank pressure
+    void update();                 // main update loop
+
+private:
+    motor _mtr;                                       // tank pump motor control
+    psensor _pressure;                                // tank pressure sensor
+    unsigned long _mtrLastStateChangeTime = millis(); // millis() reading when motor engaged
+    int _tgtPres;                                     // target pressure actively being pursued
+    int _runPres = COMP_TARGETPSI;                    // active PSI, default set in airsettings.h
+    int _idlePres = COMP_IDLEPSI;                     // idle PSI, default set in airsettings.h
+    int _hysteresis = COMP_HYS;                       // hysteresis setting
+    bool _active = false;                             // whether the compressor is actively maintaining its pressure
+    bool _cooldown = false;                           // motor cooldown, if running too long
+    bool _idle = false;                               // maintain idle pressure rather than target pressure
+    //bool _vent_tank = false;                          // vent tank contents, not yet implemented
+};
+
+// shock assembly object control class
+// update() MUST be run regularly, to run PID loop
+class shock
+{
+public:
+    shock(uint8_t valve_pin, uint8_t height_pin, uint8_t pres_pin);
+    void setHeight(int mm);    // set target height in mm; sets mode to maintain height
+    void setPressure(int psi); // set target pressure; sets mode to pressure mode
+    int getHeight();           // get height from sensor
+    int getPressure();         // get pressure from sensor
+    void update();             // MUST be run regularly to update the status
+private:
+    pvalve _valve;     // hardware object for valve control
+    psensor _pressure; // hardware object for pressure sensor
+    hsensor _height;   // hardware object for height sensor
+    int _mm_target;    // store target
+    int _psi_target;
+    int _mode; // 0=off, 1=psi, 2=height
+};
+
+#endif
