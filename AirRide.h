@@ -38,8 +38,8 @@ class hsensor
 public:
     int h_mm();
     void setPin(uint8_t pin);
-    int eeprom_store(int addr); // pass starting address, returns finishing address
-    int eeprom_load(int addr);  // pass starting address, returns finishing address
+    void eeprom_store(uint16_t *addr); // pass starting address, returns finishing address
+    void eeprom_load(uint16_t *addr);  // pass starting address, returns finishing address
 
 private:
     uint8_t _pin;

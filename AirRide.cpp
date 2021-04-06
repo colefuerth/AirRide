@@ -1,5 +1,11 @@
 #include <AirRide.h>
 
+/* NOTES
+ * Need to do EEPROM logic for compressor class
+ * Finished eeprom logic for both analog sensor types
+ * Initializer and terminators are now FE, because factory EEPROM comes filled with FF
+ */
+
 // EEPROM functions
 
 // update int at eeprom address in *addr with value val
@@ -120,8 +126,8 @@ void hsensor::eeprom_load(uint16_t *addr)
     {
         hi_v = H_HI_VOLTS;
         low_v = H_LOW_VOLTS;
-        hi_p = H_HIGH_HEIGHT;
-        low_p = H_LOW_HEIGHT;
+        hi_h = H_HIGH_HEIGHT;
+        low_h = H_LOW_HEIGHT;
         *addr += (sizeof(int) * 8) + 1; // need to increment address pointer past data, spares and terminator
         return;                         // once defaults are loaded, dont bother reading rest of EEPROM
     }
