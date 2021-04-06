@@ -1,15 +1,34 @@
-#include <Arduino.h>
 #include <AirRide.h>
-#include <airsettings.h>
+
+// EEPROM functions
+
+// update int at eeprom address in *addr with value val
+// int pointed to by *addr is automatically incremented
+void ee_write_int(uint16_t *addr, int val)
+{
+    // if (*addr >= EEPROM.length() - sizeof(int)) // FAULT FOR LATER
+    EEPROM.put(*addr, val); // write val at EEPROM address addr
+    *addr += sizeof(int);   // increment addr to next available position
+}
+
+// returns int value at eeprom address in *addr
+// int pointed to by *addr is automatically incremented
+int ee_read_int(uint16_t *addr)
+{
+    // if (addr >= EEPROM.length() - sizeof(int)) // FAULT FOR LATER
+    int val;                // memory to store int on read
+    EEPROM.get(*addr, val); // read integer at address
+    *addr += sizeof(int);   // increment addr to next unread space
+    return val;             // return integer value read
+}
 
 // ------------------- PRESSURE SENSOR FUNCTIONS -----------------------
 
-// return PSI of sensor, using mapping in airsettings.h
+// return PSI of sensor, using currently loaded settings
 int psensor::psi()
 {
-    const float coeff = 1024.0 / 5.0; // analog in -> volts float coefficient
     // scale output using settings in airsettings.h
-    return (int)map((float)analogRead(_pin), P_LOW_VOLTS * coeff, P_HI_VOLTS * coeff, P_LOW_PRES, P_HIGH_PRES);
+    return (int)map((float)analogRead(_pin), low_v, hi_v, low_p, hi_p);
 }
 
 void psensor::setPin(uint8_t pin)
@@ -18,20 +37,101 @@ void psensor::setPin(uint8_t pin)
     pinMode(pin, INPUT);
 }
 
+// pass starting address, returns finishing address
+void psensor::eeprom_store(uint16_t *addr)
+{
+    EEPROM.update(*addr++, 0xFE); // initializer
+
+    // bulk of data stored
+    ee_write_int(addr, hi_v);  // high analogRead calibration value
+    ee_write_int(addr, low_v); // low analogRead calibration value
+    ee_write_int(addr, hi_p);  // high psi calibration value
+    ee_write_int(addr, low_p); // low psi calibration value
+
+    // spare integers
+    ee_write_int(addr, 0);
+    ee_write_int(addr, 0);
+    ee_write_int(addr, 0);
+    ee_write_int(addr, 0);
+
+    EEPROM.update(*addr++, 0xFE); // close with FF byte
+}
+
+// pass starting address, returns finishing address
+void psensor::eeprom_load(uint16_t *addr)
+{
+    if (EEPROM.read(*addr++) != 0xFE) // load defaults case, if not initialized
+    {
+        hi_v = P_HI_VOLTS;
+        low_v = P_LOW_VOLTS;
+        hi_p = P_HIGH_PRES;
+        low_p = P_LOW_PRES;
+        *addr += (sizeof(int) * 8) + 1; // need to increment address pointer past data, spares and terminator
+        return;                         // once defaults are loaded, dont bother reading rest of EEPROM
+    }
+
+    hi_v = ee_read_int(addr);  // high analogRead calibration value
+    low_v = ee_read_int(addr); // low analogRead calibration value
+    hi_p = ee_read_int(addr);  // high psi calibration value
+    low_p = ee_read_int(addr); // low psi calibration value
+
+    addr += (sizeof(int) * 4) + 1; // need to increment address pointer past spares and terminator
+}
+
 // ------------------- HEIGHT SENSOR FUNCTIONS -----------------------
 
 // return PSI of sensor, using mapping in airsettings.h
 int hsensor::h_mm()
 {
-    const float coeff = 1024.0 / 5.0; // analog in -> volts float coefficient
     // scale output using settings in airsettings.h
-    return (int)map((float)analogRead(_pin), H_LOW_VOLTS * coeff, H_HI_VOLTS * coeff, H_LOW_HEIGHT, H_HIGH_HEIGHT);
+    return (int)map((float)analogRead(_pin), low_v, hi_v, low_h, hi_h);
 }
 
 void hsensor::setPin(uint8_t pin)
 {
     pinMode(pin, INPUT);
     _pin = pin;
+}
+
+// pass starting address, returns finishing address
+void hsensor::eeprom_store(uint16_t *addr)
+{
+    EEPROM.update(*addr++, 0xFE); // initializer
+
+    // bulk of data stored
+    ee_write_int(addr, hi_v);  // high analogRead calibration value
+    ee_write_int(addr, low_v); // low analogRead calibration value
+    ee_write_int(addr, hi_h);  // high psi calibration value
+    ee_write_int(addr, low_h); // low psi calibration value
+
+    // spare integers
+    ee_write_int(addr, 0);
+    ee_write_int(addr, 0);
+    ee_write_int(addr, 0);
+    ee_write_int(addr, 0);
+
+    EEPROM.update(*addr++, 0xFE); // close with FF byte
+}
+
+// pass starting address, returns finishing address
+void hsensor::eeprom_load(uint16_t *addr)
+{
+    if (EEPROM.read(*addr++) != 0xFE) // load defaults case, if not initialized
+    {
+        hi_v = H_HI_VOLTS;
+        low_v = H_LOW_VOLTS;
+        hi_p = H_HIGH_HEIGHT;
+        low_p = H_LOW_HEIGHT;
+        *addr += (sizeof(int) * 8) + 1; // need to increment address pointer past data, spares and terminator
+        return;                         // once defaults are loaded, dont bother reading rest of EEPROM
+    }
+
+    hi_v = ee_read_int(addr);  // high analogRead calibration value
+    low_v = ee_read_int(addr); // low analogRead calibration value
+    hi_h = ee_read_int(addr);  // high psi calibration value
+    low_h = ee_read_int(addr); // low psi calibration value
+
+    addr += (sizeof(int) * 4) + 1; // need to increment address pointer past spares and terminator
 }
 
 // ------------------- PRESSURE VALVE FUNCTIONS -----------------------
