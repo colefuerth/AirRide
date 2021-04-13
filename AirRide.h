@@ -26,10 +26,11 @@ public:
 
 private:
     uint8_t _pin;
-    int low_v;
-    int hi_v;
-    int low_p;
-    int hi_p;
+    // load calibrations with default values
+    int hi_v = P_HI_VOLTS;
+    int low_v = P_LOW_VOLTS;
+    int hi_p = P_HIGH_PRES;
+    int low_p = P_LOW_PRES;
 };
 
 // height sensor hardware class
@@ -43,10 +44,12 @@ public:
 
 private:
     uint8_t _pin;
-    int low_v;
-    int hi_v;
-    int low_h;
-    int hi_h;
+
+    // load calibrations with defafult values
+    int hi_v = H_HI_VOLTS;
+    int low_v = H_LOW_VOLTS;
+    int hi_h = H_HIGH_HEIGHT;
+    int low_h = H_LOW_HEIGHT;
 };
 
 // pressure valve output class

@@ -86,6 +86,7 @@ void psensor::eeprom_load(uint16_t *addr)
 
 // ------------------- HEIGHT SENSOR FUNCTIONS -----------------------
 
+
 // return PSI of sensor, using mapping in airsettings.h
 int hsensor::h_mm()
 {
@@ -227,6 +228,7 @@ void shock::update()
 
 // ------------------- COMPRESSOR OBJECT FUNCTIONS -----------------------
 
+// pass a motor pin and pressure sensor analog pin. 
 compressor::compressor(uint8_t motor_control_pin, uint8_t pres_sensor_pin)
 {
     _pressure.setPin(pres_sensor_pin);
