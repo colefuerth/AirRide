@@ -6,6 +6,23 @@
  * Initializer and terminators are now FE, because factory EEPROM comes filled with FF
  */
 
+// LOGGING function
+bool debug_log(String msg)
+{
+#ifdef SERIALLOGGING
+    // if serial debug port is not yet on, turn it on
+    static bool triedSerial = false;    // only try turning serial on once
+    if (!triedSerial && !DEBUG_PORT) // wait up to 100ms for serial to connect
+    {
+        tried_serial = true;
+        DEBUG_PORT.begin(BAUD_R);
+        for (int i=0; !S_PORT && i < 10; i++)
+            delay(10);
+    }
+    DEBUG_PORT.println(msg);
+#endif
+}
+
 // EEPROM functions
 
 // update int at eeprom address in *addr with value val
@@ -46,7 +63,12 @@ void psensor::setPin(uint8_t pin)
 // pass starting address, returns finishing address
 void psensor::eeprom_store(uint16_t *addr)
 {
-    EEPROM.update(*addr++, 0xFE); // initializer
+    if (EEPROM.read(*addr) != 0xFE)
+    {
+        debug_log("pressure sensor EEPROM uninitialized at location " + String(*addr) + ", initializing.");
+        EEPROM.write(*addr, 0xFE); // initializer
+    }
+    *addr++;    // move pointer past initializer
 
     // bulk of data stored
     ee_write_int(addr, hi_v);  // high analogRead calibration value
@@ -60,19 +82,20 @@ void psensor::eeprom_store(uint16_t *addr)
     ee_write_int(addr, 0);
     ee_write_int(addr, 0);
 
-    EEPROM.update(*addr++, 0xFE); // close with FF byte
+    EEPROM.update(*addr++, 0xFF); // close with FF byte
 }
 
 // pass starting address, returns finishing address
 void psensor::eeprom_load(uint16_t *addr)
 {
-    if (EEPROM.read(*addr++) != 0xFE) // load defaults case, if not initialized
+    if (EEPROM.read(*addr) != 0xFE || EEPROM.read(*addr + (sizeof(int) * 8)) != 0xFF) // load defaults case, if not initialized
     {
+        debug_log("pressure sensor EEPROM unitialized or improperly terminated at location " + String(*addr - 1) + ", loading defaults.");
         hi_v = P_HI_VOLTS;
         low_v = P_LOW_VOLTS;
         hi_p = P_HIGH_PRES;
         low_p = P_LOW_PRES;
-        *addr += (sizeof(int) * 8) + 1; // need to increment address pointer past data, spares and terminator
+        *addr += (sizeof(int) * 8) + 2; // need to increment address pointer past data, spares and terminator
         return;                         // once defaults are loaded, dont bother reading rest of EEPROM
     }
 
@@ -85,7 +108,6 @@ void psensor::eeprom_load(uint16_t *addr)
 }
 
 // ------------------- HEIGHT SENSOR FUNCTIONS -----------------------
-
 
 // return PSI of sensor, using mapping in airsettings.h
 int hsensor::h_mm()
@@ -103,7 +125,12 @@ void hsensor::setPin(uint8_t pin)
 // pass starting address, returns finishing address
 void hsensor::eeprom_store(uint16_t *addr)
 {
-    EEPROM.update(*addr++, 0xFE); // initializer
+    if (EEPROM.read(*addr) != 0xFE)
+    {
+        debug_log("height sensor EEPROM uninitialized at location " + String(*addr) + ", initializing.");
+        EEPROM.write(*addr, 0xFE); // initializer
+    }
+    *addr++;    // move pointer past initializer
 
     // bulk of data stored
     ee_write_int(addr, hi_v);  // high analogRead calibration value
@@ -117,21 +144,23 @@ void hsensor::eeprom_store(uint16_t *addr)
     ee_write_int(addr, 0);
     ee_write_int(addr, 0);
 
-    EEPROM.update(*addr++, 0xFE); // close with FF byte
+    EEPROM.update(*addr++, 0xFF); // close with FF byte
 }
 
 // pass starting address, returns finishing address
 void hsensor::eeprom_load(uint16_t *addr)
 {
-    if (EEPROM.read(*addr++) != 0xFE) // load defaults case, if not initialized
+    if (EEPROM.read(*addr) != 0xFE || EEPROM.read(*addr + (sizeof(int) * 8)) != 0xFF) // load defaults case, if not initialized
     {
+        debug_log("height sensor EEPROM unitialized or improperly terminated at location " + String(*addr - 1) + ", loading defaults.");
         hi_v = H_HI_VOLTS;
         low_v = H_LOW_VOLTS;
         hi_h = H_HIGH_HEIGHT;
         low_h = H_LOW_HEIGHT;
-        *addr += (sizeof(int) * 8) + 1; // need to increment address pointer past data, spares and terminator
+        *addr += (sizeof(int) * 8) + 2; // need to increment address pointer past initializer, data, spares and terminator
         return;                         // once defaults are loaded, dont bother reading rest of EEPROM
     }
+    *addr++; // move past initialization check
 
     hi_v = ee_read_int(addr);  // high analogRead calibration value
     low_v = ee_read_int(addr); // low analogRead calibration value
@@ -139,6 +168,7 @@ void hsensor::eeprom_load(uint16_t *addr)
     low_h = ee_read_int(addr); // low psi calibration value
 
     addr += (sizeof(int) * 4) + 1; // need to increment address pointer past spares and terminator
+
 }
 
 // ------------------- PRESSURE VALVE FUNCTIONS -----------------------
@@ -228,7 +258,7 @@ void shock::update()
 
 // ------------------- COMPRESSOR OBJECT FUNCTIONS -----------------------
 
-// pass a motor pin and pressure sensor analog pin. 
+// pass a motor pin and pressure sensor analog pin.
 compressor::compressor(uint8_t motor_control_pin, uint8_t pres_sensor_pin)
 {
     _pressure.setPin(pres_sensor_pin);
@@ -268,6 +298,29 @@ int compressor::get_state()
         return 1;
     else // active and idle
         return 2;
+}
+
+// store EEPROM state of Compressor
+void compressor::eeprom_store(uint16_t *addr)
+{
+    // start by checking initializer
+    if (EEPROM.read(*addr) != 0xFE)
+    {
+        debug_log("Compressor EEPROM uninitialized at location " + String(*addr) + ", initializing.");
+        EEPROM.write(*addr, 0xFE); // initializer
+    }
+    *addr++;    // move pointer past initializer
+
+    // bulk of data stored
+    // TODO: ADD DATA TO BE STORED BETWEEN POWER CYCLES
+
+    // spare integers
+    ee_write_int(addr, 0);
+    ee_write_int(addr, 0);
+    ee_write_int(addr, 0);
+    ee_write_int(addr, 0);
+
+    EEPROM.update(*addr++, 0xFF); // close with FF byte
 }
 
 // start regulating tank pressure at running pressure

@@ -5,11 +5,15 @@
 #include <EEPROM.h>
 #include "airsettings.h"
 
+// define state table
 #define IDLEMODE 0
 #define PSIMODE 1
 #define HEIGHTMODE 2
 #define ON 1
 #define OFF 0
+
+// LOGGING function
+bool debug_log(String msg);
 
 // EEPROM functions
 void ee_write_int(uint16_t *addr, int val);
@@ -85,17 +89,17 @@ class compressor
 {
 public:
     compressor(uint8_t motor_control_pin, uint8_t pres_sensor_pin);
-    void setPressure(int psi);     // running pressure for compressor to maintain
-    int getPressure();             // get current PSI in tank on sensor
-    bool isFilling();              // fetch motor state
-    int get_state();               // compressor monitor state (active, idle, off)
-    int eeprom_store(int addr);    // pass starting address, returns finishing address
-    int eeprom_load(int addr);     // pass starting address, returns finishing address
-    void setIdlePressure(int psi); // idle pressure to maintain
-    void start();                  // start regulating tank pressure
-    void start_idle();             // start idling
-    void stop();                   // stop regulating tank pressure
-    void update();                 // main update loop
+    void setPressure(int psi);         // running pressure for compressor to maintain
+    int getPressure();                 // get current PSI in tank on sensor
+    bool isFilling();                  // fetch motor state
+    int get_state();                   // compressor monitor state (active, idle, off)
+    void eeprom_store(uint16_t *addr); // pass starting address, returns finishing address
+    void eeprom_load(uint16_t *addr);  // pass starting address, returns finishing address
+    void setIdlePressure(int psi);     // idle pressure to maintain
+    void start();                      // start regulating tank pressure
+    void start_idle();                 // start idling
+    void stop();                       // stop regulating tank pressure
+    void update();                     // main update loop
 
 private:
     motor _mtr;                                       // tank pump motor control
@@ -117,13 +121,13 @@ class shock
 {
 public:
     shock(uint8_t valve_pin, uint8_t height_pin, uint8_t pres_pin);
-    void setHeight(int mm);     // set target height in mm; sets mode to maintain height
-    void setPressure(int psi);  // set target pressure; sets mode to pressure mode
-    int getHeight();            // get height from sensor
-    int getPressure();          // get pressure from sensor
-    int eeprom_store(int addr); // pass starting address, returns finishing address
-    int eeprom_load(int addr);  // pass starting address, returns finishing address
-    void update();              // MUST be run regularly to update the status
+    void setHeight(int mm);            // set target height in mm; sets mode to maintain height
+    void setPressure(int psi);         // set target pressure; sets mode to pressure mode
+    int getHeight();                   // get height from sensor
+    int getPressure();                 // get pressure from sensor
+    void eeprom_store(uint16_t *addr); // pass starting address, returns finishing address
+    void eeprom_load(uint16_t *addr);  // pass starting address, returns finishing address
+    void update();                     // MUST be run regularly to update the status
 private:
     pvalve _valve;     // hardware object for valve control
     psensor _pressure; // hardware object for pressure sensor
