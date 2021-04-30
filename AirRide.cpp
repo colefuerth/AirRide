@@ -1,5 +1,7 @@
 #include <AirRide.h>
-
+#include <Arduino.h>
+#include <EEPROM.h>
+#include "airsettings.h"
 /* NOTES
  * Need to do EEPROM logic for compressor class
  * Finished eeprom logic for both analog sensor types
@@ -14,24 +16,27 @@ bool debug_log(String msg)
     static bool triedSerial = false;    // only try turning serial on once
     if (!triedSerial && !DEBUG_PORT) // wait up to 100ms for serial to connect
     {
-        tried_serial = true;
+        triedSerial = true;
         DEBUG_PORT.begin(BAUD_R);
-        for (int i=0; !S_PORT && i < 10; i++)
+        for (int i=0; !DEBUG_PORT && i < 10; i++)
             delay(10);
     }
     DEBUG_PORT.println(msg);
+    return true;
 #endif
+    return false;
 }
 
-// EEPROM functions
+// ----------------------- EEPROM r/w functions ----------------------
 
 // update int at eeprom address in *addr with value val
 // int pointed to by *addr is automatically incremented
 void ee_write_int(uint16_t *addr, int val)
 {
     // if (*addr >= EEPROM.length() - sizeof(int)) // FAULT FOR LATER
+
     EEPROM.put(*addr, val); // write val at EEPROM address addr
-    *addr += sizeof(int);   // increment addr to next available position
+    *addr+= sizeof(int);
 }
 
 // returns int value at eeprom address in *addr
@@ -39,11 +44,71 @@ void ee_write_int(uint16_t *addr, int val)
 int ee_read_int(uint16_t *addr)
 {
     // if (addr >= EEPROM.length() - sizeof(int)) // FAULT FOR LATER
-    int val;                // memory to store int on read
-    EEPROM.get(*addr, val); // read integer at address
+    int val;
+    EEPROM.get(*addr, val); // read byte at address
     *addr += sizeof(int);   // increment addr to next unread space
     return val;             // return integer value read
 }
+
+// write string at address, increment address by 20
+// requires: max string length is 19
+// returns 0 if successful
+// returns 1 if string too long
+int ee_write_string(uint16_t *addr, String str)
+{
+    if (str.length() >= 19) // string too long to store
+    {
+        debug_log("String too long to store");
+        return 1; // fail condition
+    }
+    EEPROM.put(*addr, str);
+    *addr += 20;
+    return 0;
+}
+
+// returns string found at address *addr, then increments address by 20
+String ee_read_string(uint16_t *addr)
+{
+    String _str;
+    EEPROM.get(*addr, _str);
+    *addr += 20;
+    return _str;
+}
+
+// NEEDS LOGGING MESSAGES ADDED
+// check for EEPROM correct initialization
+// 0: correctly initialized
+// 1: EEPROM version mismatch
+// 2: data partition error
+// 3: profile storage partition error
+int ee_initialized()
+{
+    uint8_t temp;
+
+    // start by checking for master 1 at address 0
+    // stating EEPROM has been initialized in the past
+    EEPROM.read(0, temp);
+    if (temp != 1)
+        return 1; // master EEPROM uninitialized condition
+
+    // check EEPROM version number
+    EEPROM.read(1, temp);
+    if (temp != EE_VER)
+        return 2; // EEPROM version mismatch warning
+    
+    // check data portion is initialized
+    EEPROM.read(EE_DATA_START, temp);
+    if (temp != 0xFE)
+        return 3;   // EEPROM data partition uninitialized
+
+    // check profiles portion is initialized
+    EEPROM.read(EE_PROF_START, temp);
+    if (temp != 0xFE)
+        return 4;   // EEPROM data partition uninitialized
+
+    return 0;
+}
+
 
 // ------------------- PRESSURE SENSOR FUNCTIONS -----------------------
 
@@ -170,6 +235,7 @@ void hsensor::eeprom_load(uint16_t *addr)
     addr += (sizeof(int) * 4) + 1; // need to increment address pointer past spares and terminator
 
 }
+
 
 // ------------------- PRESSURE VALVE FUNCTIONS -----------------------
 
@@ -389,4 +455,102 @@ void compressor::update()
     // Cooldown must finish once started before motor starts again, regardless of machine state.
     if (_cooldown && millis() - _mtrLastStateChangeTime >= (long)COMP_COOLTIME * 1000)
         _cooldown = false;
+}
+
+
+// ******** EEPROM PROFILE FUNCTIONS **********
+
+// looks up EEPROM address of profile
+// returns 0 if not found, or the address of the profile in EEPROM if exists
+uint16_t profileExists(int _profile_index) 
+{
+    // start by pointing at integer value for number of profiles initialized
+    uint16_t addr = EE_PROF_START + 3; 
+    // check for uninitialized EEPROM or not enough profiles
+    if (!ee_initialized() || ee_read_int(&addr) - 1 < _profile_index)
+        return 0;
+    // move pointer to relevant pointer
+    addr += _profile_index * 26; // each profile is 26 bytes wide
+    // return address pointed to
+    return addr;
+}
+
+// creates a new profile, and fills the profile with default values. 
+// Returns 0 if successful, 1 if max profiles reached, 2 if EEPROM uninitialized
+int createProfile(Profile _new_profile) 
+{
+    uint16_t addr = EE_PROF_START + 3; // set address to location of profile counter
+    int numprofiles = ee_read_int(&addr);
+    if (ee_initialized()) // check if eeprom is initialized
+    {
+        debug_log("Unable to create new profile; a problem was found when checking EEPROM validity.");
+        return 2;
+    }
+    if (numprofiles >= 5)   // check if too many profiles exist
+    {
+        debug_log("Unable to create new profile, maximum number of profiles reached!");
+        return 1;
+    }
+    addr -= 2; // reset address pointer to profile counter in EEPROM
+    ee_write_int(&addr, numprofiles + 1);
+
+    addr += numprofiles * 26; // increment to the starting address of new profile
+    EEPROM.update(addr++, 0xFE); // initializer
+    ee_write_string(&addr, _new_profile.name); // store profile name
+    ee_write_int(&addr, _new_profile.mode); // store mode
+    ee_write_int(&addr, _new_profile.val); // store value
+    EEPROM.update(addr++, 0xFF);
+
+    return 0; // success condition
+}
+
+// VERIFY PROFILE LOADING LOGIC (ie loading into _profile->mode, for example)
+// loads profile indexed by '_index'. 
+// 0: successful load
+// 1: Master EEPROM problem
+// 2: Profile not yet created
+// 3: Profile data corrupted
+int loadProfile(Profile *_profile, int _index) 
+{
+    // check if eeprom is initialized
+    if (ee_initialized()) 
+    {
+        debug_log("Unable to load profile; a problem was found when checking EEPROM validity.");
+        return 1;
+    }
+    // address pointer is 0 if not exist
+    int addr = profileExists(_index);
+    if (!addr)
+    {
+        debug_log("Unable to load profile; specified profile does not exist")
+        return 2; // unsuccessful condition
+    }
+    if (EEPROM.read(addr++) != 0xFE)
+    {
+        debug_log("Profile data corrupted. Index: " + String(_index));
+        return 3;
+    }
+
+    // load body data
+    _profile->name = ee_read_string(&addr);
+    _profile->mode = ee_read_int(&addr);
+    _profile->val = ee_read_int(&addr);
+    
+    // check for correct termination
+    // NOTE: this is a WARNING, and will still load the data regardless
+    if (EEPROM.read(addr++) != 0xFF)
+    {
+        debug_log("Warning: Profile data corrupted; improper termination. Index: " + String(_index));
+        return 3;
+    }
+
+    return 0; // success condition
+}
+
+// UNFINISHED
+// saves profile _profile, in profile index _index. 
+// Returns 0 if successful, 1 if unsuccessful
+int saveProfile(Profile _profile, int _index) 
+{
+    return 0; // success condition
 }

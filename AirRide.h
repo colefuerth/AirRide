@@ -1,16 +1,10 @@
 #ifndef AirRide_h
 #define AirRide_h
 
+
 #include <Arduino.h>
 #include <EEPROM.h>
 #include "airsettings.h"
-
-// define state table
-#define IDLEMODE 0
-#define PSIMODE 1
-#define HEIGHTMODE 2
-#define ON 1
-#define OFF 0
 
 // LOGGING function
 bool debug_log(String msg);
@@ -18,6 +12,9 @@ bool debug_log(String msg);
 // EEPROM functions
 void ee_write_int(uint16_t *addr, int val);
 int ee_read_int(uint16_t *addr);
+int ee_write_string(uint16_t *addr, String str);
+String ee_read_string(uint16_t *addr);
+int ee_initialized();
 
 // pressure sensor hardware class
 class psensor
@@ -136,5 +133,21 @@ private:
     int _psi_target;
     int _mode; // 0=off, 1=psi, 2=height
 };
+
+// ******** START OF PROFILE LOGIC **********
+
+// Create a class for holding temporary profile data
+class Profile{
+public:
+    String name = DEFAULT_PROFILE_NAME;
+    int mode = DEFAULT_MODE;
+    int val = DEFAULT_VAL;
+};
+
+uint16_t profileExists(int _profile_index); // returns true if the EEPROM profile is initialized at that index
+int createProfile(Profile _new_profile); // creates a new profile, and fills the profile with default values. Returns 0 if successful, 1 if max profiles reached, 2 if EEPROM uninitialized
+int loadProfile(Profile *_profile, int _index); // loads profile indexed by '_index'. returns 0 if successful, 1 if unsuccessful
+int saveProfile(Profile _profile, int _index); // saves profile _profile, in profile index _index. Returns 0 if successful, 1 if unsuccessful
+
 
 #endif
