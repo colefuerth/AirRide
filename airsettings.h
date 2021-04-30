@@ -12,6 +12,8 @@
 #define EE_VER 1    // EEPROM version number
 #define EE_DATA_START 20 // data starting address
 #define EE_PROF_START 500 // profiles starting address
+#define EE_FORCE_CLEAR_ON_INIT // forces EEPROM to clear itself on any init_eeprom() call, disables warnings
+//#define EE_IGNORE_VERSIONS // ignore version mismatch
 
 // set log levels
 #define SERIALLOGGING

@@ -8,12 +8,12 @@ bool debug_log(String msg)
 {
 #ifdef SERIALLOGGING
     // if serial debug port is not yet on, turn it on
-    static bool triedSerial = false;    // only try turning serial on once
+    static bool triedSerial = false; // only try turning serial on once
     if (!triedSerial && !DEBUG_PORT) // wait up to 100ms for serial to connect
     {
         triedSerial = true;
         DEBUG_PORT.begin(BAUD_R);
-        for (int i=0; !DEBUG_PORT && i < 10; i++)
+        for (int i = 0; !DEBUG_PORT && i < 10; i++)
             delay(10);
     }
     DEBUG_PORT.println(msg);
@@ -31,7 +31,7 @@ void ee_write_int(uint16_t *addr, int val)
     // if (*addr >= EEPROM.length() - sizeof(int)) // FAULT FOR LATER
 
     EEPROM.put(*addr, val); // write val at EEPROM address addr
-    *addr+= sizeof(int);
+    *addr += sizeof(int);
 }
 
 // returns int value at eeprom address in *addr
@@ -86,24 +86,103 @@ int ee_initialized()
     if (temp != 1)
         return 1; // master EEPROM uninitialized condition
 
+#ifndef EE_IGNORE_VERSIONS
     // check EEPROM version number
     temp = EEPROM.read(1);
     if (temp != EE_VER)
         return 2; // EEPROM version mismatch warning
-    
+#endif
+
     // check data portion is initialized
     temp = EEPROM.read(EE_DATA_START);
     if (temp != 0xFE)
-        return 3;   // EEPROM data partition uninitialized
+        return 3; // EEPROM data partition uninitialized
 
     // check profiles portion is initialized
     temp = EEPROM.read(EE_PROF_START);
     if (temp != 0xFE)
-        return 4;   // EEPROM data partition uninitialized
+        return 4; // EEPROM data partition uninitialized
 
     return 0;
 }
 
+// UNFINISHED
+// initialize EEPROM
+// affected by settings in airsettings: EE_FORCE_CLEAR_ON_INIT, EE_IGNORE_VERSIONS
+// clear_data is an optional passed bit, if true, will clear all stored data in EEPROM when initialization occurs
+// skip_master skips master data and immediately moves to profile EEPROM init
+// skip_profiles skips profile data when it gets there
+// return codes:
+// 0: successful init
+// 1: Master EEPROM already initialized
+// 2: Profile EEPROM already initialized
+int ee_init(bool skip_master = false, bool skip_profiles = false, bool clear_data = false)
+{
+
+// if force clear debug setting is on, then force clear_data to true
+#ifdef EE_FORCE_CLEAR_ON_INIT
+    clear_data = true;
+#endif
+
+    uint16_t addr = 0;
+
+    // ******* Master Data EEPROM *********
+    if (!skip_master)
+    {
+// only check for preinitialized EEPROM if not forcing clear
+#ifndef EE_FORCE_CLEAR_ON_INIT
+        if (EEPROM.read(addr) == 1)
+        {
+            debug_log("Could not initialize master EEPROM; already initialized.");
+            return 1;
+        }
+#endif
+        addr++; // increment address to version
+        bool ee_mismatch = false;
+
+        // check version number
+#ifndef EE_IGNORE_VERSIONS
+        if (EEPROM.read(addr) != EE_VER)
+        {
+            debug_log("EEPROM version mismatch. Updating version to " + String(EE_VER));
+            EEPROM.update(addr, EE_VER);
+            ee_mismatch = true;
+        }
+#endif
+        addr = 20;
+
+        // NEEDS REST OF MASTER INIT CODE HERE
+        // if ee_mismatch, clear all data
+        // dont worry about bulk data; just set/check start and end points; delete all data if clear data bit set
+        // bulk data can be set with a function in main.ino, which interacts with this section
+
+    } // end of master init
+
+    // ******* PROFILES EEPROM ***********
+    // finished, as far as I can tell
+    if (!skip_profiles)
+    {
+        addr = EE_PROF_START;
+#ifndef EE_FORCE_CLEAR_ON_INIT
+        if (EEPROM.read(addr) == 0xFE)
+        {
+            debug_log("Could not initialize profile EEPROM; already initialized.");
+            return 2;
+        }
+#endif
+
+        EEPROM.update(addr++, 0xFE); // store initialized bit
+        if (clear_data)              // this runs regardless if force clear setting is on
+        {
+            ee_write_int(&addr, DEFAULT_PROFILE); // default profile is defined in airsettings.h
+            ee_write_int(&addr, 0);               // 0 profiles are stored on initialization
+            // loop through all profile data slots, clearing all of them, plus the master terminator at the end
+            const uint16_t lim = addr + 26 * 5; // predefined limit; saves time when doing loop
+            while (addr <= lim)                 // '<=' to cover all profile data slots, PLUS the terminator at the very end
+                EEPROM.update(addr++, 0xFF);
+        }
+    } // end of profiles init
+} // end of eeprom_init
 
 // ------------------- PRESSURE SENSOR FUNCTIONS -----------------------
 
@@ -128,7 +207,7 @@ void psensor::eeprom_store(uint16_t *addr)
         debug_log("pressure sensor EEPROM uninitialized at location " + String(*addr) + ", initializing.");
         EEPROM.write(*addr, 0xFE); // initializer
     }
-    *addr++;    // move pointer past initializer
+    *addr++; // move pointer past initializer
 
     // bulk of data stored
     ee_write_int(addr, hi_v);  // high analogRead calibration value
@@ -190,7 +269,7 @@ void hsensor::eeprom_store(uint16_t *addr)
         debug_log("height sensor EEPROM uninitialized at location " + String(*addr) + ", initializing.");
         EEPROM.write(*addr, 0xFE); // initializer
     }
-    *addr++;    // move pointer past initializer
+    *addr++; // move pointer past initializer
 
     // bulk of data stored
     ee_write_int(addr, hi_v);  // high analogRead calibration value
@@ -228,9 +307,7 @@ void hsensor::eeprom_load(uint16_t *addr)
     low_h = ee_read_int(addr); // low psi calibration value
 
     addr += (sizeof(int) * 4) + 1; // need to increment address pointer past spares and terminator
-
 }
-
 
 // ------------------- PRESSURE VALVE FUNCTIONS -----------------------
 
@@ -370,7 +447,7 @@ void compressor::eeprom_store(uint16_t *addr)
         debug_log("Compressor EEPROM uninitialized at location " + String(*addr) + ", initializing.");
         EEPROM.write(*addr, 0xFE); // initializer
     }
-    *addr++;    // move pointer past initializer
+    *addr++; // move pointer past initializer
 
     // bulk of data stored
     // TODO: ADD DATA TO BE STORED BETWEEN POWER CYCLES
@@ -452,27 +529,29 @@ void compressor::update()
         _cooldown = false;
 }
 
-
 // ******** EEPROM PROFILE FUNCTIONS **********
 
 // looks up EEPROM address of profile
 // returns 0 if not found, or the address of the profile in EEPROM if exists
-uint16_t profileExists(int _profile_index) 
+uint16_t profileExists(int _profile_index)
 {
     // start by pointing at integer value for number of profiles initialized
-    uint16_t addr = EE_PROF_START + 3; 
+    uint16_t addr = EE_PROF_START + 3;
     // check for uninitialized EEPROM or not enough profiles
-    if (!ee_initialized() || ee_read_int(&addr) - 1 < _profile_index)
+    if (ee_initialized() || ee_read_int(&addr) - 1 < _profile_index)
         return 0;
     // move pointer to relevant pointer
+    // at this point, address pointer is pointing at first address of first profile.
     addr += _profile_index * 26; // each profile is 26 bytes wide
     // return address pointed to
     return addr;
 }
 
-// creates a new profile, and fills the profile with default values. 
-// Returns 0 if successful, 1 if max profiles reached, 2 if EEPROM uninitialized
-int createProfile(Profile _new_profile) 
+// creates a new profile, and fills the profile with default values.
+// 0: profile creation success
+// 1: max profiles reached
+// 2: EEPROM uninitialized
+int createProfile(Profile _new_profile)
 {
     uint16_t addr = EE_PROF_START + 3; // set address to location of profile counter
     int numprofiles = ee_read_int(&addr);
@@ -481,7 +560,7 @@ int createProfile(Profile _new_profile)
         debug_log("Unable to create new profile; a problem was found when checking EEPROM validity.");
         return 2;
     }
-    if (numprofiles >= 5)   // check if too many profiles exist
+    if (numprofiles >= 5) // check if too many profiles exist
     {
         debug_log("Unable to create new profile, maximum number of profiles reached!");
         return 1;
@@ -489,32 +568,33 @@ int createProfile(Profile _new_profile)
     addr -= 2; // reset address pointer to profile counter in EEPROM
     ee_write_int(&addr, numprofiles + 1);
 
-    addr += numprofiles * 26; // increment to the starting address of new profile
-    EEPROM.update(addr++, 0xFE); // initializer
+    addr += numprofiles * 26;                  // increment to the starting address of new profile
+    EEPROM.update(addr++, 0xFE);               // initializer
     ee_write_string(&addr, _new_profile.name); // store profile name
-    ee_write_int(&addr, _new_profile.mode); // store mode
-    ee_write_int(&addr, _new_profile.val); // store value
+    ee_write_int(&addr, _new_profile.mode);    // store mode
+    ee_write_int(&addr, _new_profile.val);     // store value
     EEPROM.update(addr++, 0xFF);
 
     return 0; // success condition
 }
 
-// loads profile indexed by '_index'. 
+// loads profile indexed by '_index'.
+// index ranges from 0-4
 // 0: successful load
 // 1: Master EEPROM problem
 // 2: Profile not yet created
 // 3: Profile data corrupted
-int loadProfile(Profile *_profile, int _index) 
+int loadProfile(Profile *_profile, int _index)
 {
     // check if eeprom is initialized
-    if (ee_initialized()) 
+    if (ee_initialized())
     {
         debug_log("Unable to load profile; a problem was found when checking EEPROM validity.");
         return 1;
     }
     // address pointer is 0 if not exist
     uint16_t addr = profileExists(_index);
-    if (!addr)
+    if (!addr || _index > 4)
     {
         debug_log("Unable to load profile; specified profile does not exist");
         return 2; // unsuccessful condition
@@ -529,7 +609,7 @@ int loadProfile(Profile *_profile, int _index)
     _profile->name = ee_read_string(&addr);
     _profile->mode = ee_read_int(&addr);
     _profile->val = ee_read_int(&addr);
-    
+
     // check for correct termination
     // NOTE: this is a WARNING, and will still load the data regardless
     if (EEPROM.read(addr++) != 0xFF)
@@ -541,10 +621,48 @@ int loadProfile(Profile *_profile, int _index)
     return 0; // success condition
 }
 
-// UNFINISHED
-// saves profile _profile, in profile index _index. 
-// Returns 0 if successful, 1 if unsuccessful
-int saveProfile(Profile _profile, int _index) 
+// saves profile _profile, in profile index _index.
+// index ranges from 0-4
+// 0: successful read
+// 1: EEPROM problem
+// 2: Profile slot uninitialized
+// 3: Profile data corrupted
+int saveProfile(Profile _profile, int _index)
 {
+
+    // check if eeprom is initialized
+    if (ee_initialized())
+    {
+        debug_log("Unable to save profile; a problem was found when checking EEPROM validity.");
+        return 1;
+    }
+    // address pointer is 0 if not exist
+    uint16_t addr = EE_PROF_START + 3; // point address at number of profiles initialized
+    // index is 0-4, number initialized is 1-5
+    // so, if 1 profile is initialized but index is 1, then fail
+    if (_index >= ee_read_int(&addr) || _index > 4)
+    {
+        debug_log("Unable to save profile; specified profile does not exist");
+        return 2; // unsuccessful condition
+    }
+    if (EEPROM.read(addr++) != 0xFE)
+    {
+        debug_log("Profile data corrupted. Index: " + String(_index));
+        return 3;
+    }
+
+    // load body data, this method is verified
+    ee_write_string(&addr, _profile.name);
+    ee_write_int(&addr, _profile.mode);
+    ee_write_int(&addr, _profile.val);
+
+    // check for correct termination
+    // NOTE: this is a WARNING, and will still load the data regardless
+    if (EEPROM.read(addr++) != 0xFF)
+    {
+        debug_log("Warning: Profile data corrupted; improper termination. Index: " + String(_index));
+        return 3;
+    }
+
     return 0; // success condition
 }
