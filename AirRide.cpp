@@ -2,11 +2,6 @@
 #include <Arduino.h>
 #include <EEPROM.h>
 #include "airsettings.h"
-/* NOTES
- * Need to do EEPROM logic for compressor class
- * Finished eeprom logic for both analog sensor types
- * Initializer and terminators are now FE, because factory EEPROM comes filled with FF
- */
 
 // LOGGING function
 bool debug_log(String msg)
@@ -87,22 +82,22 @@ int ee_initialized()
 
     // start by checking for master 1 at address 0
     // stating EEPROM has been initialized in the past
-    EEPROM.read(0, temp);
+    temp = EEPROM.read(0);
     if (temp != 1)
         return 1; // master EEPROM uninitialized condition
 
     // check EEPROM version number
-    EEPROM.read(1, temp);
+    temp = EEPROM.read(1);
     if (temp != EE_VER)
         return 2; // EEPROM version mismatch warning
     
     // check data portion is initialized
-    EEPROM.read(EE_DATA_START, temp);
+    temp = EEPROM.read(EE_DATA_START);
     if (temp != 0xFE)
         return 3;   // EEPROM data partition uninitialized
 
     // check profiles portion is initialized
-    EEPROM.read(EE_PROF_START, temp);
+    temp = EEPROM.read(EE_PROF_START);
     if (temp != 0xFE)
         return 4;   // EEPROM data partition uninitialized
 
@@ -504,7 +499,6 @@ int createProfile(Profile _new_profile)
     return 0; // success condition
 }
 
-// VERIFY PROFILE LOADING LOGIC (ie loading into _profile->mode, for example)
 // loads profile indexed by '_index'. 
 // 0: successful load
 // 1: Master EEPROM problem
@@ -519,10 +513,10 @@ int loadProfile(Profile *_profile, int _index)
         return 1;
     }
     // address pointer is 0 if not exist
-    int addr = profileExists(_index);
+    uint16_t addr = profileExists(_index);
     if (!addr)
     {
-        debug_log("Unable to load profile; specified profile does not exist")
+        debug_log("Unable to load profile; specified profile does not exist");
         return 2; // unsuccessful condition
     }
     if (EEPROM.read(addr++) != 0xFE)
@@ -531,7 +525,7 @@ int loadProfile(Profile *_profile, int _index)
         return 3;
     }
 
-    // load body data
+    // load body data, this method is verified
     _profile->name = ee_read_string(&addr);
     _profile->mode = ee_read_int(&addr);
     _profile->val = ee_read_int(&addr);
