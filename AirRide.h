@@ -14,7 +14,10 @@ void ee_write_int(uint16_t *addr, int val);
 int ee_read_int(uint16_t *addr);
 int ee_write_string(uint16_t *addr, String str);
 String ee_read_string(uint16_t *addr);
+
 int ee_initialized();
+int ee_init(bool skip_master = false, bool skip_profiles = false, bool clear_data = false);
+void ee_clear();
 
 // pressure sensor hardware class
 class psensor

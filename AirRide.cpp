@@ -84,29 +84,41 @@ int ee_initialized()
     // stating EEPROM has been initialized in the past
     temp = EEPROM.read(0);
     if (temp != 1)
+    {
+        debug_log("EEPROM not correctly initialized: EEPROM not yet initialized.")
         return 1; // master EEPROM uninitialized condition
+    }
 
 #ifndef EE_IGNORE_VERSIONS
     // check EEPROM version number
     temp = EEPROM.read(1);
     if (temp != EE_VER)
+    {
+        debug_log("EEPROM not correctly initialized: EEPROM version mismatch.")
         return 2; // EEPROM version mismatch warning
+    }
 #endif
 
     // check data portion is initialized
     temp = EEPROM.read(EE_DATA_START);
     if (temp != 0xFE)
+    {
+        debug_log("EEPROM not correctly initialized: EEPROM embedded data portion not initialized.")
         return 3; // EEPROM data partition uninitialized
+    }
 
     // check profiles portion is initialized
     temp = EEPROM.read(EE_PROF_START);
     if (temp != 0xFE)
+    {
+        debug_log("EEPROM not correctly initialized: EEPROM profiles data portion not initialized.")
         return 4; // EEPROM data partition uninitialized
+    }
 
     return 0;
 }
 
-// UNFINISHED
+// NEEDS TESTING
 // initialize EEPROM
 // affected by settings in airsettings: EE_FORCE_CLEAR_ON_INIT, EE_IGNORE_VERSIONS
 // clear_data is an optional passed bit, if true, will clear all stored data in EEPROM when initialization occurs
@@ -129,32 +141,66 @@ int ee_init(bool skip_master = false, bool skip_profiles = false, bool clear_dat
     // ******* Master Data EEPROM *********
     if (!skip_master)
     {
-// only check for preinitialized EEPROM if not forcing clear
-#ifndef EE_FORCE_CLEAR_ON_INIT
-        if (EEPROM.read(addr) == 1)
+        // only check for preinitialized EEPROM if not forcing clear
+        bool isInitialized = EEPROM.read(addr) == 1;
+        if (!isInitialized)
         {
-            debug_log("Could not initialize master EEPROM; already initialized.");
-            return 1;
+            debug_log("Beginning first initialization of EEPROM.");
+            EEPROM.write(addr, 1);
         }
-#endif
         addr++; // increment address to version
-        bool ee_mismatch = false;
-
+        
         // check version number
+        bool ee_mismatch = false;
 #ifndef EE_IGNORE_VERSIONS
-        if (EEPROM.read(addr) != EE_VER)
+        if (isInitialized && EEPROM.read(addr) != EE_VER)
         {
             debug_log("EEPROM version mismatch. Updating version to " + String(EE_VER));
             EEPROM.update(addr, EE_VER);
-            ee_mismatch = true;
+            ee_mismatch = true; // set flag for EEPROM version mismatch
+            clear_data = true;  // clear data on version mismatch
         }
 #endif
         addr = 20;
 
-        // NEEDS REST OF MASTER INIT CODE HERE
-        // if ee_mismatch, clear all data
-        // dont worry about bulk data; just set/check start and end points; delete all data if clear data bit set
-        // bulk data can be set with a function in main.ino, which interacts with this section
+        // check for master data block initializer
+#ifndef EE_FORCE_CLEAR_ON_INIT
+        if (EEPROM.read(addr) == 0xFE)
+        {
+            // if already initialized, issue warning and skip to profiles
+            debug_log("Could not initialize master EEPROM; already initialized.");
+            // change skip_master to true and run function again
+            // cursed, yes, but it was the simplest way to skip to profile checks
+            skip_master = true;
+            ee_init(skip_master, skip_profiles, clear_data);
+            // return code for already initialized is 2
+            return 2;
+        }
+#endif
+
+        // ensure initializer bit for master data block is set
+        EEPROM.update(addr++, 0xFE);
+
+        // if clear_data bit is set, then clear all bulk data
+        // clear_data is forced on if EE_FORCE_CLEAR_ON_INIT is defined
+        // loop clears data, starting at beginning of bulk and ending at terminator FF FF FF
+        if (clear_data)
+        {
+            uint8_t ff_conc = 0; // number of consecutive FF bits
+            while (addr < EE_PROF_START && ff_conc < 3)
+            {
+                // increment counter if addr is FF
+                if (EEPROM.read(addr) == 0xFF)
+                    ff_conc++;
+                // if addr is not FF, reset counter to 0 and set location to FF
+                else
+                {
+                    ff_conc = 0;
+                    EEPROM.write(addr, 0xFF);
+                }
+                addr++;
+            }
+        }
 
     } // end of master init
 
@@ -183,6 +229,14 @@ int ee_init(bool skip_master = false, bool skip_profiles = false, bool clear_dat
         }
     } // end of profiles init
 } // end of eeprom_init
+
+void ee_clear()
+{
+    Serial.print("Clearing EEPROM...");
+    for (uint16_t i = 0; i < 1024; EEPROM.update(i++, 0xFF))
+        ;
+    Serial.println("Done.");
+}
 
 // ------------------- PRESSURE SENSOR FUNCTIONS -----------------------
 
