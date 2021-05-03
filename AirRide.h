@@ -20,7 +20,7 @@ int ee_init(bool skip_master = false, bool skip_profiles = false, bool clear_dat
 void ee_clear();
 
 // pressure sensor hardware class
-class psensor
+class PSensor
 {
 public:
     int psi();
@@ -38,7 +38,7 @@ private:
 };
 
 // height sensor hardware class
-class hsensor
+class HSensor
 {
 public:
     int h_mm();
@@ -57,7 +57,7 @@ private:
 };
 
 // pressure valve output class
-class pvalve
+class PValve
 {
 public:
     void setState(bool state);
@@ -69,8 +69,8 @@ private:
     bool _state = 0;
 };
 
-// class for controlling the compressor motor
-class motor
+// class for controlling the Compressor Motor
+class Motor
 {
 public:
     void setState(bool state);
@@ -82,17 +82,17 @@ private:
     bool _state = 0;
 };
 
-// compressor object control class
+// Compressor object control class
 // update() MUST be run regularly, to keep PID loop runnung
 // defaults setpoint to
-class compressor
+class Compressor
 {
 public:
-    compressor(uint8_t motor_control_pin, uint8_t pres_sensor_pin);
-    void setPressure(int psi);         // running pressure for compressor to maintain
+    Compressor(uint8_t motor_control_pin, uint8_t pres_sensor_pin);
+    void setPressure(int psi);         // running pressure for Compressor to maintain
     int getPressure();                 // get current PSI in tank on sensor
-    bool isFilling();                  // fetch motor state
-    int get_state();                   // compressor monitor state (active, idle, off)
+    bool isFilling();                  // fetch Motor state
+    int getState();                   // Compressor monitor state (active, idle, off)
     void eeprom_store(uint16_t *addr); // pass starting address, returns finishing address
     void eeprom_load(uint16_t *addr);  // pass starting address, returns finishing address
     void setIdlePressure(int psi);     // idle pressure to maintain
@@ -102,25 +102,25 @@ public:
     void update();                     // main update loop
 
 private:
-    motor _mtr;                                       // tank pump motor control
-    psensor _pressure;                                // tank pressure sensor
-    unsigned long _mtrLastStateChangeTime = millis(); // millis() reading when motor engaged
+    Motor _mtr;                                       // tank pump Motor control
+    PSensor _pressure;                                // tank pressure sensor
+    unsigned long _mtrLastStateChangeTime = millis(); // millis() reading when Motor engaged
     int _tgtPres;                                     // target pressure actively being pursued
     int _runPres = COMP_TARGETPSI;                    // active PSI, default set in airsettings.h
     int _idlePres = COMP_IDLEPSI;                     // idle PSI, default set in airsettings.h
     int _hysteresis = COMP_HYS;                       // hysteresis setting
-    bool _active = false;                             // whether the compressor is actively maintaining its pressure
-    bool _cooldown = false;                           // motor cooldown, if running too long
+    bool _active = false;                             // whether the Compressor is actively maintaining its pressure
+    bool _cooldown = false;                           // Motor cooldown, if running too long
     bool _idle = false;                               // maintain idle pressure rather than target pressure
     //bool _vent_tank = false;                          // vent tank contents, not yet implemented
 };
 
-// shock assembly object control class
+// Shock assembly object control class
 // update() MUST be run regularly, to run PID loop
-class shock
+class Shock
 {
 public:
-    shock(uint8_t valve_pin, uint8_t height_pin, uint8_t pres_pin);
+    Shock(uint8_t valve_pin, uint8_t height_pin, uint8_t pres_pin);
     void setHeight(int mm);            // set target height in mm; sets mode to maintain height
     void setPressure(int psi);         // set target pressure; sets mode to pressure mode
     int getHeight();                   // get height from sensor
@@ -129,9 +129,9 @@ public:
     void eeprom_load(uint16_t *addr);  // pass starting address, returns finishing address
     void update();                     // MUST be run regularly to update the status
 private:
-    pvalve _valve;     // hardware object for valve control
-    psensor _pressure; // hardware object for pressure sensor
-    hsensor _height;   // hardware object for height sensor
+    PValve _valve;     // hardware object for valve control
+    PSensor _pressure; // hardware object for pressure sensor
+    HSensor _height;   // hardware object for height sensor
     int _mm_target;    // store target
     int _psi_target;
     int _mode; // 0=off, 1=psi, 2=height

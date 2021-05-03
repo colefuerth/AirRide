@@ -31,7 +31,7 @@
 #define P_LOW_VOLTS 1.0 * ( 1024.0 / 5.0 ) // 1V low
 #define P_LOW_PRES 15.0 // 15psi low
 #define P_HI_VOLTS 4.0 * ( 1024.0 / 5.0 )  // 4V high
-#define P_HIGH_PRES 150.0 // 150psi high
+#define P_HIGH_PRES 50.0 // 150psi high
 
 // default ride height sensor high and low voltages and heights, in millimeters
 #define H_LOW_VOLTS 1.0 * ( 1024.0 / 5.0 )
@@ -39,7 +39,7 @@
 #define H_HI_VOLTS 4.0 * ( 1024.0 / 5.0 )
 #define H_HIGH_HEIGHT 100.0
 
-// compressor settings
+// Compressor settings
 #define COMP_TARGETPSI 105   // default pressure to maintain
 #define COMP_IDLEPSI 60   // pressure to idle at when inactive
 #define COMP_HYS 15        // hysteresis setting (psi tolerance)
@@ -47,7 +47,9 @@
 #define COMP_MAXRUNTIME 5 * 60 // 5 minutes before cooldown
 #define COMP_COOLTIME 1 * 60   // 1 minute cooldown before running again
 
-// shock settings
+#define SHK_MAX_PSI 50
+
+// Shock settings
 //#define IDLEPSI 60
 
 #endif

@@ -85,7 +85,7 @@ int ee_initialized()
     temp = EEPROM.read(0);
     if (temp != 1)
     {
-        debug_log("EEPROM not correctly initialized: EEPROM not yet initialized.")
+        debug_log("EEPROM not correctly initialized: EEPROM not yet initialized.");
         return 1; // master EEPROM uninitialized condition
     }
 
@@ -94,7 +94,7 @@ int ee_initialized()
     temp = EEPROM.read(1);
     if (temp != EE_VER)
     {
-        debug_log("EEPROM not correctly initialized: EEPROM version mismatch.")
+        debug_log("EEPROM not correctly initialized: EEPROM version mismatch.");
         return 2; // EEPROM version mismatch warning
     }
 #endif
@@ -103,7 +103,7 @@ int ee_initialized()
     temp = EEPROM.read(EE_DATA_START);
     if (temp != 0xFE)
     {
-        debug_log("EEPROM not correctly initialized: EEPROM embedded data portion not initialized.")
+        debug_log("EEPROM not correctly initialized: EEPROM embedded data portion not initialized.");
         return 3; // EEPROM data partition uninitialized
     }
 
@@ -111,7 +111,7 @@ int ee_initialized()
     temp = EEPROM.read(EE_PROF_START);
     if (temp != 0xFE)
     {
-        debug_log("EEPROM not correctly initialized: EEPROM profiles data portion not initialized.")
+        debug_log("EEPROM not correctly initialized: EEPROM profiles data portion not initialized.");
         return 4; // EEPROM data partition uninitialized
     }
 
@@ -128,7 +128,7 @@ int ee_initialized()
 // 0: successful init
 // 1: Master EEPROM already initialized
 // 2: Profile EEPROM already initialized
-int ee_init(bool skip_master = false, bool skip_profiles = false, bool clear_data = false)
+int ee_init( bool skip_master, bool skip_profiles, bool clear_data)
 {
 
 // if force clear debug setting is on, then force clear_data to true
@@ -241,20 +241,20 @@ void ee_clear()
 // ------------------- PRESSURE SENSOR FUNCTIONS -----------------------
 
 // return PSI of sensor, using currently loaded settings
-int psensor::psi()
+int PSensor::psi()
 {
     // scale output using settings in airsettings.h
     return (int)map((float)analogRead(_pin), low_v, hi_v, low_p, hi_p);
 }
 
-void psensor::setPin(uint8_t pin)
+void PSensor::setPin(uint8_t pin)
 {
     _pin = pin;
     pinMode(pin, INPUT);
 }
 
 // pass starting address, returns finishing address
-void psensor::eeprom_store(uint16_t *addr)
+void PSensor::eeprom_store(uint16_t *addr)
 {
     if (EEPROM.read(*addr) != 0xFE)
     {
@@ -279,7 +279,7 @@ void psensor::eeprom_store(uint16_t *addr)
 }
 
 // pass starting address, returns finishing address
-void psensor::eeprom_load(uint16_t *addr)
+void PSensor::eeprom_load(uint16_t *addr)
 {
     if (EEPROM.read(*addr) != 0xFE || EEPROM.read(*addr + (sizeof(int) * 8)) != 0xFF) // load defaults case, if not initialized
     {
@@ -303,20 +303,20 @@ void psensor::eeprom_load(uint16_t *addr)
 // ------------------- HEIGHT SENSOR FUNCTIONS -----------------------
 
 // return PSI of sensor, using mapping in airsettings.h
-int hsensor::h_mm()
+int HSensor::h_mm()
 {
     // scale output using settings in airsettings.h
     return (int)map((float)analogRead(_pin), low_v, hi_v, low_h, hi_h);
 }
 
-void hsensor::setPin(uint8_t pin)
+void HSensor::setPin(uint8_t pin)
 {
     pinMode(pin, INPUT);
     _pin = pin;
 }
 
 // pass starting address, returns finishing address
-void hsensor::eeprom_store(uint16_t *addr)
+void HSensor::eeprom_store(uint16_t *addr)
 {
     if (EEPROM.read(*addr) != 0xFE)
     {
@@ -341,7 +341,7 @@ void hsensor::eeprom_store(uint16_t *addr)
 }
 
 // pass starting address, returns finishing address
-void hsensor::eeprom_load(uint16_t *addr)
+void HSensor::eeprom_load(uint16_t *addr)
 {
     if (EEPROM.read(*addr) != 0xFE || EEPROM.read(*addr + (sizeof(int) * 8)) != 0xFF) // load defaults case, if not initialized
     {
@@ -366,18 +366,18 @@ void hsensor::eeprom_load(uint16_t *addr)
 // ------------------- PRESSURE VALVE FUNCTIONS -----------------------
 
 // state 1 = open, 0 = closed
-void pvalve::setState(bool state)
+void PValve::setState(bool state)
 {
     _state = state;
     digitalWrite(_pin, !_state); // valves run by relays, so active low
 }
 
-bool pvalve::getState()
+bool PValve::getState()
 {
     return _state;
 }
 
-void pvalve::setPin(uint8_t pin)
+void PValve::setPin(uint8_t pin)
 {
     pinMode(pin, OUTPUT);
     _pin = pin;
@@ -386,20 +386,20 @@ void pvalve::setPin(uint8_t pin)
 // ------------------- COMPRESSOR MOTOR FUNCTIONS -----------------------
 
 // state 1 = powered, 0 = idle
-void motor::setState(bool state)
+void Motor::setState(bool state)
 {
     _state = state;
     digitalWrite(_pin, !_state); // valves run by relays, so active low
 }
 
 // state 1 = powered, 0 = idle
-bool motor::getState()
+bool Motor::getState()
 {
     return _state;
 }
 
-// set motor output pin
-void motor::setPin(uint8_t pin)
+// set Motor output pin
+void Motor::setPin(uint8_t pin)
 {
     _pin = pin;
     pinMode(pin, OUTPUT);
@@ -407,82 +407,82 @@ void motor::setPin(uint8_t pin)
 
 // ------------------- SHOCK OBJECT FUNCTIONS -----------------------
 
-// initialize a shock, with all pin IO values
-shock::shock(uint8_t valve_pin_out, uint8_t height_pin, uint8_t pres_pin)
+// initialize a Shock, with all pin IO values
+Shock::Shock(uint8_t valve_pin_out, uint8_t height_pin, uint8_t pres_pin)
 {
     _valve.setPin(valve_pin_out);
     _pressure.setPin(pres_pin);
     _height.setPin(height_pin);
 }
 
-// set target height shock should try to maintain
-// also sets shock to maintain a certain height
-void shock::setHeight(int h_mm)
+// set target height Shock should try to maintain
+// also sets Shock to maintain a certain height
+void Shock::setHeight(int h_mm)
 {
     _mm_target = h_mm;
     _mode = HEIGHTMODE;
 }
 
-// set target pressure that shock should maintain
-// sets shock control mode to maintain psi rather than height
-void shock::setPressure(int psi)
+// set target pressure that Shock should maintain
+// sets Shock control mode to maintain psi rather than height
+void Shock::setPressure(int psi)
 {
     _psi_target = psi;
     _mode = PSIMODE;
 }
 
-// check height on sensor associated with shock
-int shock::getHeight()
+// check height on sensor associated with Shock
+int Shock::getHeight()
 {
     return _height.h_mm();
 }
 
-// check pressure in psi on sensor associated with shock
-int shock::getPressure()
+// check pressure in psi on sensor associated with Shock
+int Shock::getPressure()
 {
     return _pressure.psi();
 }
 
-void shock::update()
+void Shock::update()
 {
     // TODO: use _mode and height/psi values to maintain a target setting
 }
 
 // ------------------- COMPRESSOR OBJECT FUNCTIONS -----------------------
 
-// pass a motor pin and pressure sensor analog pin.
-compressor::compressor(uint8_t motor_control_pin, uint8_t pres_sensor_pin)
+// pass a Motor pin and pressure sensor analog pin.
+Compressor::Compressor(uint8_t motor_control_pin, uint8_t pres_sensor_pin)
 {
     _pressure.setPin(pres_sensor_pin);
     _mtr.setPin(motor_control_pin);
 }
 
-// pressure (PSI) for compressor to maintain when active
-void compressor::setPressure(int psi)
+// pressure (PSI) for Compressor to maintain when active
+void Compressor::setPressure(int psi)
 {
     _runPres = psi;
 }
 
-// pressure (PSI) for compressor to maintain when idle
-void compressor::setIdlePressure(int psi)
+// pressure (PSI) for Compressor to maintain when idle
+void Compressor::setIdlePressure(int psi)
 {
     _idlePres = psi;
 }
 
 // return pressure in PSI
-int compressor::getPressure()
+int Compressor::getPressure()
 {
     return _pressure.psi();
 }
 
-// fetch motor state
-bool compressor::isFilling()
+// fetch Motor state
+bool Compressor::isFilling()
 {
     return _mtr.getState();
 }
 
 // 0 if off, 1 if active, 2 if idle
-int compressor::get_state()
+int Compressor::getState()
 {
     if (!_active) // inactive
         return 0;
@@ -493,7 +493,7 @@ int compressor::get_state()
 }
 
 // store EEPROM state of Compressor
-void compressor::eeprom_store(uint16_t *addr)
+void Compressor::eeprom_store(uint16_t *addr)
 {
     // start by checking initializer
     if (EEPROM.read(*addr) != 0xFE)
@@ -516,44 +516,44 @@ void compressor::eeprom_store(uint16_t *addr)
 }
 
 // start regulating tank pressure at running pressure
-void compressor::start()
+void Compressor::start()
 {
     _active = true;
     _idle = false;
 }
 
-// set compressor to idle mode, maintaining stored idle PSI
-void compressor::start_idle()
+// set Compressor to idle mode, maintaining stored idle PSI
+void Compressor::start_idle()
 {
     _active = true;
     _idle = true;
 }
 
 // stop regulating tank pressure
-void compressor::stop()
+void Compressor::stop()
 {
     _active = false;
 }
 
 // main update loop
-void compressor::update()
+void Compressor::update()
 {
-    // set target PSI based on compressor state
+    // set target PSI based on Compressor state
     if (_idle)
         _tgtPres = _idlePres;
     else
         _tgtPres = _runPres;
 
-    // if tank is active, monitor pressure and run motor to maintain target
+    // if tank is active, monitor pressure and run Motor to maintain target
     if (_active)
     {
-        // start motor case, requirements: pres too low, not in cooldown, motor is off
+        // start Motor case, requirements: pres too low, not in cooldown, Motor is off
         if (_mtr.getState() == OFF && _pressure.psi() < (_tgtPres - _hysteresis) && !_cooldown)
         {
             _mtr.setState(ON);
             _mtrLastStateChangeTime = millis();
         }
-        // stop motor case, requirements: motor is on and pres at spec or max time reached
+        // stop Motor case, requirements: Motor is on and pres at spec or max time reached
         if (_mtr.getState() == ON)
         {
             if (_pressure.psi() >= (_tgtPres + _hysteresis) || _pressure.psi() >= COMP_MAXPSI)
@@ -569,7 +569,7 @@ void compressor::update()
             }
         }
     }
-    // if inactive, then ensure motor is off
+    // if inactive, then ensure Motor is off
     else
     {
         if (_mtr.getState() == ON)
@@ -578,7 +578,7 @@ void compressor::update()
     }
 
     // if cooldown was engaged, then disengage it when the timer runs out.
-    // Cooldown must finish once started before motor starts again, regardless of machine state.
+    // Cooldown must finish once started before Motor starts again, regardless of machine state.
     if (_cooldown && millis() - _mtrLastStateChangeTime >= (long)COMP_COOLTIME * 1000)
         _cooldown = false;
 }
