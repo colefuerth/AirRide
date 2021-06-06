@@ -16,7 +16,9 @@ int ee_write_string(uint16_t *addr, String str);
 String ee_read_string(uint16_t *addr);
 
 int ee_initialized();
-int ee_init(bool skip_master = false, bool skip_profiles = false, bool clear_data = false);
+int ee_init(bool clear_data, bool skip_master, bool skip_profiles);
+int ee_init(bool clear_data);   // overload with only clear_data
+int ee_init();                  // overload with default values
 void ee_clear();
 
 // pressure sensor hardware class
