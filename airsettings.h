@@ -19,6 +19,8 @@
 #define SERIALLOGGING
 #define DEBUG_PORT Serial
 #define BAUD_R 115200
+#define EEPROM_DEBUG 0
+#define PROFILE_DEBUG 0
 
 // default values for profiles and profile manager
 #define DEFAULT_PROFILE 0   // default profile to load on boot, can be changed later, this is just a default for compilation

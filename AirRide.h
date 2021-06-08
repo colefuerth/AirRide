@@ -150,9 +150,9 @@ public:
 };
 
 uint16_t profileExists(int _profile_index); // returns true if the EEPROM profile is initialized at that index
-int createProfile(Profile _new_profile); // creates a new profile, and fills the profile with default values. Returns 0 if successful, 1 if max profiles reached, 2 if EEPROM uninitialized
+int createProfile(Profile *_new_profile); // creates a new profile, and fills the profile with default values. Returns 0 if successful, 1 if max profiles reached, 2 if EEPROM uninitialized
 int loadProfile(Profile *_profile, int _index); // loads profile indexed by '_index'. returns 0 if successful, 1 if unsuccessful
-int saveProfile(Profile _profile, int _index); // saves profile _profile, in profile index _index. Returns 0 if successful, 1 if unsuccessful
+int saveProfile(Profile *_profile, int _index); // saves profile _profile, in profile index _index. Returns 0 if successful, 1 if unsuccessful
 
 
 #endif

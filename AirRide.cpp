@@ -30,9 +30,15 @@ void ee_write_int(uint16_t *addr, int val)
 {
     // if (*addr >= EEPROM.length() - sizeof(int)) // FAULT FOR LATER
 
-    EEPROM.put(*addr, val); // write val at EEPROM address addr
-    debug_log("writing " + String(val) + " at address " + String(*addr));
-    *addr += sizeof(int);
+    // EEPROM.put(*addr, val); // write val at EEPROM address addr
+    uint8_t a, b;
+    a = (val >> 8) & 0xFF; // a holds upper 8 bits
+    b = val & 0xFF;        // b holds lower 8 bits
+    EEPROM.update(*addr, a);
+    EEPROM.update(*addr + 1, b);
+    if (EEPROM_DEBUG)
+        debug_log("writing " + String(val) + " at address " + String(*addr));
+    *addr += 2;
 }
 
 // returns int value at eeprom address in *addr
@@ -41,10 +47,17 @@ int ee_read_int(uint16_t *addr)
 {
     // if (addr >= EEPROM.length() - sizeof(int)) // FAULT FOR LATER
     int val;
-    EEPROM.get(*addr, val); // read byte at address
-    debug_log("reading " + String(val) + " at address " + String(*addr));
-    *addr += sizeof(int);   // increment addr to next unread space
-    return val;             // return integer value read
+    // EEPROM.get(*addr, val); // read byte at address
+    uint8_t a, b;               // declare temp memory for upper and lower bits
+    a = EEPROM.read(*addr);     // grab upper 8 bits in a
+    b = EEPROM.read(*addr + 1); // grab lower 8 bits in b
+    val = a;                    // store upper 8 bits in val
+    val = (val << 8) & 0xFF00;  // shift upper 8 bits, then clear lower 8 bits
+    val |= b & 0xFF;            // copy lower 8 bits into val
+    if (EEPROM_DEBUG)
+        debug_log("reading " + String(val) + " at address " + String(*addr));
+    *addr += 2; // increment addr to next unread space
+    return val; // return integer value read
 }
 
 // write string at address, increment address by 20
@@ -58,18 +71,34 @@ int ee_write_string(uint16_t *addr, String str)
         debug_log("String too long to store");
         return 1; // fail condition
     }
-    debug_log("writing string \"" + str + "\" at address " + String(*addr));
-    EEPROM.put(*addr, str);
-    *addr += 20;
+    if (EEPROM_DEBUG)
+        debug_log("writing string '" + str + "' at address " + String(*addr));
+    // EEPROM.put(*addr, str);
+    for (uint16_t i = 0; i < 20; i++)
+    {
+        if (i < str.length())
+            EEPROM.update(*addr + i, str.charAt(i));
+        else
+            EEPROM.update(*addr + i, 0);
+    }
+    *addr += 20; // ensure address is updated
     return 0;
 }
 
 // returns string found at address *addr, then increments address by 20
 String ee_read_string(uint16_t *addr)
 {
-    String _str;
-    EEPROM.get(*addr, _str);
-    debug_log("reading string \"" + _str + "\" at address " + String(*addr));
+    String _str = "";
+    // EEPROM.get(*addr, _str); // might not work for this purpose
+    uint16_t _len = 0;
+    char c;
+    while ((c = EEPROM.read(*addr + _len)) != 0 && _len < 20)
+    {
+        _str = _str + String(c); // store character that was read
+        _len++;
+    }
+    if (EEPROM_DEBUG)
+        debug_log("reading string \"" + _str + "\" at address " + String(*addr));
     *addr += 20;
     return _str;
 }
@@ -82,7 +111,7 @@ String ee_read_string(uint16_t *addr)
 // 3: profile storage partition error
 int ee_initialized()
 {
-    debug_log("Checking if eeprom initialized.");
+    if (EEPROM_DEBUG) debug_log("Checking if eeprom initialized.");
     uint8_t temp;
 
     // start by checking for master 1 at address 0
@@ -119,7 +148,7 @@ int ee_initialized()
         debug_log("EEPROM not correctly initialized: EEPROM profiles data portion not initialized.");
         return 4; // EEPROM data partition uninitialized
     }
-    debug_log("eeprom init check successful.");
+    if (EEPROM_DEBUG) debug_log("eeprom init check successful.");
     return 0;
 }
 
@@ -141,10 +170,13 @@ int ee_init(bool clear_data, bool skip_master, bool skip_profiles)
     clear_data = true;
 #endif
 
-    debug_log("initializing eeprom with flags:");
-    debug_log("\tclear_data: " + String(clear_data));
-    debug_log("\tskip_master: " + String(skip_master));
-    debug_log("\tskip_profiles: " + String(skip_profiles));
+    if (EEPROM_DEBUG)
+    {
+        debug_log("initializing eeprom with flags:");
+        debug_log("\tclear_data: " + String(clear_data));
+        debug_log("\tskip_master: " + String(skip_master));
+        debug_log("\tskip_profiles: " + String(skip_profiles));
+    }
 
     uint16_t addr = 0;
 
@@ -159,7 +191,7 @@ int ee_init(bool clear_data, bool skip_master, bool skip_profiles)
             EEPROM.write(addr, 1);
         }
         addr++; // increment address to version
-        
+
         // check version number
         bool ee_mismatch = false;
 #ifndef EE_IGNORE_VERSIONS
@@ -170,7 +202,7 @@ int ee_init(bool clear_data, bool skip_master, bool skip_profiles)
             ee_mismatch = true; // set flag for EEPROM version mismatch
             clear_data = true;  // clear data on version mismatch
         }
-        else 
+        else
             EEPROM.update(addr, EE_VER);
 #endif
         addr = 20;
@@ -240,7 +272,8 @@ int ee_init(bool clear_data, bool skip_master, bool skip_profiles)
                 EEPROM.update(addr++, 0xFF);
         }
     } // end of profiles init
-    debug_log("successfully finished eeprom init.");
+    if (EEPROM_DEBUG)
+        debug_log("successfully finished eeprom init.");
     return 0;
 } // end of eeprom_init
 
@@ -259,7 +292,8 @@ int ee_init()
 void ee_clear()
 {
     Serial.print("Clearing EEPROM...");
-    for (uint16_t i = 0; i < 1024; EEPROM.update(i++, 0xFF));
+    for (uint16_t i = 0; i < 1024; EEPROM.update(i++, 0xFF))
+        ;
     Serial.println("Done.");
 }
 
@@ -630,9 +664,10 @@ uint16_t profileExists(int _profile_index)
 // 0: profile creation success
 // 1: max profiles reached
 // 2: EEPROM uninitialized
-int createProfile(Profile _new_profile)
+int createProfile(Profile *_new_profile)
 {
-    debug_log("start of createprofile call");
+    if (PROFILE_DEBUG)
+        debug_log("start of createprofile call");
     if (ee_initialized()) // check if eeprom is initialized
     {
         debug_log("Unable to create new profile; a problem was found when checking EEPROM validity.");
@@ -645,16 +680,18 @@ int createProfile(Profile _new_profile)
         debug_log("Unable to create new profile, maximum number of profiles reached!");
         return 1;
     }
-    addr -= 2; // reset address pointer to profile counter in EEPROM
-    ee_write_int(&addr, numprofiles + 1);
-    addr += numprofiles * 26;                  // increment to the starting address of new profile
-    debug_log("creating profile " + String(numprofiles) + " at address " + String(addr));
-    EEPROM.update(addr++, 0xFE);               // initializer
-    ee_write_string(&addr, _new_profile.name); // store profile name
-    ee_write_int(&addr, _new_profile.mode);    // store mode
-    ee_write_int(&addr, _new_profile.val);     // store value
+    addr -= 2;                            // reset address pointer to profile counter in EEPROM
+    ee_write_int(&addr, numprofiles + 1); // update profile counter in eeprom
+    addr += numprofiles * 26;             // increment to the starting address of new profile
+    if (PROFILE_DEBUG)
+        debug_log("creating profile " + String(numprofiles) + " at address " + String(addr));
+    EEPROM.update(addr++, 0xFE);                // initializer
+    ee_write_string(&addr, _new_profile->name); // store profile name
+    ee_write_int(&addr, _new_profile->mode);    // store mode
+    ee_write_int(&addr, _new_profile->val);     // store value
     EEPROM.update(addr++, 0xFF);
-    debug_log("done creating profile.");
+    if (PROFILE_DEBUG)
+        debug_log("done creating profile.");
 
     return 0; // success condition
 }
@@ -667,7 +704,8 @@ int createProfile(Profile _new_profile)
 // 3: Profile data corrupted
 int loadProfile(Profile *_profile, int _index)
 {
-    debug_log("loading profile " + String(_index));
+    if (PROFILE_DEBUG)
+        debug_log("loading profile " + String(_index));
     // check if eeprom is initialized
     if (int err = ee_initialized())
     {
@@ -679,7 +717,7 @@ int loadProfile(Profile *_profile, int _index)
     uint16_t addr = profileExists(_index);
     if (!addr || _index > 4)
     {
-        debug_log("Unable to load profile; specified profile does not exist");
+        debug_log("Unable to load profile" + String(_index) + "; specified profile does not exist");
         return 2; // unsuccessful condition
     }
     if (EEPROM.read(addr++) != 0xFE)
@@ -700,7 +738,8 @@ int loadProfile(Profile *_profile, int _index)
         debug_log("Warning: Profile data corrupted; improper termination. Index: " + String(_index));
         return 3;
     }
-    debug_log("done loading profile " + String(_index));
+    if (PROFILE_DEBUG)
+        debug_log("done loading profile " + String(_index));
     return 0; // success condition
 }
 
@@ -711,9 +750,10 @@ int loadProfile(Profile *_profile, int _index)
 // 1: EEPROM problem
 // 2: Profile slot uninitialized
 // 3: Profile data corrupted
-int saveProfile(Profile _profile, int _index)
+int saveProfile(Profile *_profile, int _index)
 {
-    debug_log("saving profile " + String(_index));
+    if (PROFILE_DEBUG)
+        debug_log("saving profile " + String(_index));
     // check if eeprom is initialized
     if (ee_initialized())
     {
@@ -732,7 +772,7 @@ int saveProfile(Profile _profile, int _index)
 
     // increment address pointer to desired start of profile
     int profile_size = 22 + (2 * sizeof(int)); // 20 for string, 2 for init and termination, and 2 ints
-    addr += _index * profile_size;  // move to initializer
+    addr += _index * profile_size;             // move to initializer
 
     // all profiles begin with FE when initialized
     if (EEPROM.read(addr++) != 0xFE)
@@ -742,9 +782,9 @@ int saveProfile(Profile _profile, int _index)
     }
 
     // load body data, this method is verified
-    ee_write_string(&addr, _profile.name);
-    ee_write_int(&addr, _profile.mode);
-    ee_write_int(&addr, _profile.val);
+    ee_write_string(&addr, _profile->name);
+    ee_write_int(&addr, _profile->mode);
+    ee_write_int(&addr, _profile->val);
 
     // check for correct termination
     // NOTE: this is a WARNING, and will still load the data regardless
@@ -753,6 +793,7 @@ int saveProfile(Profile _profile, int _index)
         debug_log("Warning: Profile data corrupted; improper termination. Index: " + String(_index));
         return 3;
     }
-    debug_log("done saving profile " + String(_index));
+    if (PROFILE_DEBUG)
+        debug_log("done saving profile " + String(_index));
     return 0; // success condition
 }
