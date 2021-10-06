@@ -1,0 +1,7 @@
+{
+    "board": "arduino:avr:micro",
+    "programmer": "arduino:avrisp",
+    "sketch": "Arduino Project/main.ino",
+    "output": "/home/pi/Air Ride Project I/Arduino Project/build",
+    "port": "/dev/ttyACM0"
+}

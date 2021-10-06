@@ -1,0 +1,41 @@
+last session notes:
+eeprom functions work; I needed to manually make read/write functions work
+need to wire up sim and test control system, controls are pretty much ready
+when firmware works, start creating interface
+
+
+-- DEV TODO --
+  - EACH SHOCK NEEDS A BLEED VALVE
+// - make sure when loading EEPROM, if a parameter or entire object is not initialized at addr, load defaults
+//  - create classes for profiles
+//  - implement logging messages
+ - some kind of control program in main.ino needs to be made, to integrate the library and whatever pi I happen to use
+ - test all EEPROM functionality ***********
+ - each hardware EEPROM needs to store pin settings
+
+-- PROFILES --
+ //- test how passing class pointers works (for loading profiles, for example)
+ - profile loading into embedded system will be done in main.ino; control loop and profile management libraries will be standalone
+ - verify profile functionality
+
+
+ - create logic to calibrate individual analog sensors, and store calibrations in EEPROM
+
+ - Faults can probably be done with a master malloc array, and then initialize fault system by passing that address to a class, so it knows where to store. 
+    -> Then, any call anywhere using those functions will set faults to the same memory
+
+Faults to add:
+ - Master EEPROM not initialized
+ - EEPROM invalid termination loaded
+ - EEPROM version mis-match
+ - Reached end of EEPROM
+ - Bounds reached for sensors
+ - analog read accuracy Bounds
+
+
+great cow basic
+
+test that all 9 analog inputs work at the same time
+think about how to do a serial control from BLE
+create a system for MUX digital outputs
+

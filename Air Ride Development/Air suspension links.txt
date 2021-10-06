@@ -1,0 +1,11 @@
+Links
+
+https://www.woolseyworkshop.com/2020/02/05/controlling-an-arduino-from-a-raspberry-pi/
+
+http://www.techbitar.com/how-to-network-many-arduinos-with-sensors-using-i2c.html
+
+http://www.techbitar.com/how-to-network-many-arduinos-with-sensors-using-i2c.html
+
+https://www.audizine.com/forum/showthread.php/586445-Air-ride-build-thread-with-Arduino-based-management/page3
+
+http://67-72chevytrucks.com/vboard/showthread.php?t=600987

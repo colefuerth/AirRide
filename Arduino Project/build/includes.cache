@@ -1,0 +1,37 @@
+[
+  {
+    "Sourcefile": null,
+    "Include": "",
+    "Includepath": "/home/pi/Downloads/arduino-1.8.15/hardware/arduino/avr/cores/arduino"
+  },
+  {
+    "Sourcefile": null,
+    "Include": "",
+    "Includepath": "/home/pi/Downloads/arduino-1.8.15/hardware/arduino/avr/variants/micro"
+  },
+  {
+    "Sourcefile": "/home/pi/Air Ride Project I/Arduino Project/build/sketch/AirRide.cpp.cpp",
+    "Include": "EEPROM.h",
+    "Includepath": "/home/pi/Downloads/arduino-1.8.15/hardware/arduino/avr/libraries/EEPROM/src"
+  },
+  {
+    "Sourcefile": "/home/pi/Air Ride Project I/Arduino Project/build/sketch/AirRide.cpp.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/pi/Air Ride Project I/Arduino Project/build/sketch/debug.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/pi/Air Ride Project I/Arduino Project/build/sketch/ee_functions.cpp",
+    "Include": "",
+    "Includepath": null
+  },
+  {
+    "Sourcefile": "/home/pi/Air Ride Project I/Arduino Project/build/sketch/hardware_devices.cpp",
+    "Include": "",
+    "Includepath": null
+  }
+]

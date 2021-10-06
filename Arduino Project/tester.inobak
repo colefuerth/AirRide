@@ -1,0 +1,76 @@
+// arduino usb port at 'dmesg | grep "tty"'
+
+// #include <AirRide.h>
+#include <time.h>
+/*
+ * TODO:
+ * - MUST finish Shock::update() function, need to integrate a PID loop of some sort to maintain user setting
+ * - import ONS functions, etc into my own library
+ */
+
+// Compressor *cmp1 = new Compressor(2, A0); // Motor pin, analog psi sensor pin
+/*
+String toString(char *s)
+{
+    String str = "";
+    for (int i = 0; *(s + i) != '\0'; str += *(s + i++));
+    return str;
+}
+*/
+char buf[500];
+
+void setup()
+{
+    // use defined BAUD_R
+    Serial.begin(115200); // enable serial for debug
+    while (!Serial)
+        delay(100);
+
+    // EEPROM.update(0, -1);
+
+    // uint16_t addr = 30;
+    // ee_clear();
+    // ee_init(true);  // set clear eeprom flag
+
+    /* EEPROM testing
+    // create a new profile
+    Profile *p1 = new Profile();
+    p1->name = "profile 1";
+    // Serial.println(p1->name);
+    p1->val = 40;
+    Serial.println(createProfile(p1)); // should return 0, for success
+    // Serial.println(saveProfile(*p1, 0));    // should return 2, as profile is uninitialized
+    Profile *p2 = new Profile();    // need to malloc() memory for p2
+    Serial.println(loadProfile(p2, 0)); // should return 0 for success
+    Serial.println(p2->name);       // this doesn't print, i think the string is stored in eeprom improperly
+    Serial.println(p2->val);
+    //cmp1->start();   // set Compressor to start maintaining running pressure
+
+    Serial.println("Discrete test of string read");
+
+
+    Serial.println("Test complete");
+    */
+}
+
+void loop()
+{
+    //cmp1->update();  // main program loop for Compressor
+    //cmp1->isFilling();
+    if (Serial.available() > 0)
+    {
+        Serial.flush();                 // clear serial as soon as go from python is received
+        time_t clk = micros();          // set clock
+        Serial.println("from arduino"); // send message
+        while (Serial.available() <= 0) // wait for response
+            delayMicroseconds(1);
+        int i = 0;
+        while (Serial.available() > 0)  // process response
+            buf[i++] = Serial.read();
+        buf[i] = '\0'; // ENSURE null terminator is there
+        clk = micros() - clk;   // record time to recv
+        Serial.println("msg received was " + String(buf));
+        Serial.println("whole transaction took " + String(clk) + "us");
+    }
+    delay(20);
+}

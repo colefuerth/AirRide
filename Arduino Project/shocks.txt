@@ -1,0 +1,7 @@
+Notes on Shock Development
+
+Features to implement:
+
+ - regular cycle only really needs to run when initialized; so it reaches the target height/psi and then idles there
+ - Each shock needs a fill valve and a bleed valve on the valve block
+ - 

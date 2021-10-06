@@ -1,0 +1,123 @@
+# written using documentation found at:
+# https://arduino.github.io/arduino-cli/latest/library-specification/
+
+
+# General Functions included
+debug_log	KEYWORD2
+ee_write_int	KEYWORD2
+ee_read_int	KEYWORD2
+ee_write_string	KEYWORD2
+ee_read_string	KEYWORD2
+ee_init	KEYWORD2
+ee_initialized	KEYWORD2
+ee_clear	KEYWORD2
+
+# Classes and their related keywords
+# keywords from previous classes are not repeated
+PSensor	KEYWORD3
+psi	KEYWORD2
+setPin	KEYWORD2
+eeprom_store	KEYWORD2
+eeprom_load	KEYWORD2
+_pin	KEYWORD1
+hi_v	KEYWORD1
+low_v	KEYWORD1
+hi_p	KEYWORD1
+low_p	KEYWORD1
+
+HSensor	KEYWORD3
+h_mm	KEYWORD2
+hi_h	KEYWORD1
+low_h	KEYWORD1
+
+PValve	KEYWORD3
+setState	KEYWORD2
+getState	KEYWORD2
+_state	KEYWORD1
+
+Motor	KEYWORD3
+
+Compressor	KEYWORD3
+setPressure	KEYWORD2
+getPressure	KEYWORD2
+isFilling	KEYWORD2
+setIdlePressure	KEYWORD2
+start	KEYWORD2
+start_idle	KEYWORD2
+stop	KEYWORD2
+update	KEYWORD2
+_mtr	KEYWORD1
+_pressure	KEYWORD1
+_mtrLastStateChangeTime	KEYWORD1
+_tgtPres	KEYWORD1
+_runPres	KEYWORD1
+_idlePres	KEYWORD1
+_hysteresis	KEYWORD1
+_active	KEYWORD1
+_cooldown	KEYWORD1
+_idle	KEYWORD1
+
+Shock	KEYWORD3
+setHeight	KEYWORD2
+getHeight	KEYWORD2
+_valve	KEYWORD1
+# _pressure KEYWORD1
+_height	KEYWORD1
+_mm_target	KEYWORD1
+_psi_target	KEYWORD1
+_mode	KEYWORD1
+
+Profile KEYWORD3
+name	KEYWORD1
+mode	KEYWORD1
+val		KEYWORD1
+
+
+# CONSTANTS FROM airsettings_h
+# define state table, DO NOT MODIFY
+IDLEMODE	LITERAL1
+PSIMODE	LITERAL1
+HEIGHTMODE	LITERAL1
+ON	LITERAL1
+OFF	LITERAL1
+
+# ADVANCED: EEPROM data
+EE_VER 1 	LITERAL1
+EE_DATA_START 	LITERAL1
+EE_PROF_START	LITERAL1
+EE_FORCE_CLEAR_ON_INIT	LITERAL1
+EE_IGNORE_VERSIONS	LITERAL1
+
+# set log levels
+SERIALLOGGING	LITERAL1
+DEBUG_PORT	LITERAL1
+BAUD_R	LITERAL1
+
+# default values for profiles and profile manager
+DEFAULT_PROFILE	LITERAL1
+DEFAULT_PROFILE_NAME	LITERAL1
+DEFAULT_MODE	LITERAL1
+DEFAULT_VAL	LITERAL1
+
+
+# default pressure sensor high and low voltages, use floats; matched with high and low PSI values below
+P_LOW_VOLTS	LITERAL1
+P_LOW_PRES	LITERAL1
+P_HI_VOLTS	LITERAL1
+P_HIGH_PRES	LITERAL1
+
+# default ride height sensor high and low voltages and heights, in millimeters
+H_LOW_VOLTS	LITERAL1
+H_LOW_HEIGHT	LITERAL1
+H_HI_VOLTS	LITERAL1
+H_HIGH_HEIGHT	LITERAL1
+
+# Compressor settings
+COMP_TARGETPSI	LITERAL1
+COMP_IDLEPSI	LITERAL1
+COMP_HYS	LITERAL1
+COMP_MAXPSI	LITERAL1
+COMP_MAXRUNTIME	LITERAL1
+COMP_COOLTIME	LITERAL1
+
+SHK_MAX_PSI	LITERAL1

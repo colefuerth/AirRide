@@ -1,0 +1,47 @@
+profile summary / brainstorm
+
+PROFILE DATA WILL BE A DATA STRUCTURE COMPLETELY MANAGED WITHIN EEPROM. ALL FUNCTIONS AND DATA SIMPLY INTERACT WITH THE DATA STRUCTURE, FOR SIMPLICITY
+THE ONLY STORED CONSTANT IS THE STARTING ADDRESS IN EEPROM OF THE DATA STRUCTURE
+
+default profile needs to be an integer pointing to which profile to load as default (default: DEFAULT_PROFILE)
+ - Start profiles EEPROM with this
+
+- Maximum 5 profiles
+- Name is 19 characters max
+
+each profile needs:
+    - a name (default: DEFAULT_PROFILE_NAME)
+    - mode associated ( either height or psi ) (default: DEFAULT_MODE)
+    - height/psi setting, integer (resets to default when changing between the two) (default: DEFAULT_VAL)
+
+
+Profiles EEPROM
+
+Manager:
+(1) FE initializer
+(2) int, default profile (default: DEFAULT_PROFILE)
+(2) int, number of profiles initialized (default: 0) (if 0, then just load default values on boot)
+(n) profile data
+(1) FF EEPROM terminator
+
+Profile:
+(1) FE initializer
+(20) Name of profile, terminated with '\0', max 19 characters
+(2) int, mode (1 for PSI, 2 for height) (default: DEFAULT_MODE)
+(4) float, pressure/height setting (load DEFAULT_VAL)
+(1) FF terminator
+
+Create a class for holding profile data (ONLY for temp use, for loading/saving profiles from EEPROM)
+class profile{
+public:
+    char name[20] = DEFAULT_PROFILE_NAME;
+    int mode = DEFAULT_MODE;
+    int val = DEFAULT_VAL
+};
+
+Public functions to create, for interacting with Profiles in EEPROM: (as entered into header file)
+#define PROF_START_ADDR 500 // implemented in airsettings_h
+bool isInitialized(int _profile_index) // returns true if the EEPROM profile is initialized at that index
+int newProfile(profile new_profile); // creates a new profile, and fills the profile with default values. Returns 0 if successful, 1 if max profiles reached, 2 if EEPROM uninitialized
+int loadProfile(profile *_profile, int _index); // loads profile indexed by '_index'. returns 0 if successful, 1 if unsuccessful
+int saveProfile(profile _profile, int _index); // saves profile _profile, in profile index _index. Returns 0 if successful, 1 if unsuccessful

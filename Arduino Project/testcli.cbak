@@ -1,0 +1,143 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+
+void debug_log(char *str)
+{
+	perror(str);
+}
+
+char ptr[20];
+int iter = 0;
+
+char Serial.read()
+{
+	if (ptr[iter] != '\0')
+		return ptr[iter++];
+}
+
+int Serial.available()
+{
+	return strlen(ptr) - iter;
+}
+
+void Serial.println(char *str)
+{
+	puts(str);
+}
+
+int main()
+{
+	strcpy(ptr, "shock 0 set psi 20");
+	if (Serial.available > 0)
+	{
+		// need to malloc space for buffer
+		// use local memory, so life is easier
+		static uint16_t bufsize = 0; // starts as 0
+		const uint8_t bufstep = 32;	 // step buffer sizes 32 bytes at a time
+		static char *buf = NULL;	 // initialized as null
+		// TODO: make sure serial messages from pi end with \n,
+		// to accurately separate commands when sent in fast succession
+		int i = 0;
+		while (Serial.available() > 0) // process response
+		{
+			if (bufsize >= 256)
+			{
+				debug_log("cli buffer overflow!");
+				exit(-1); // kill processor
+			}
+			if (i >= bufsize - 1) // if not enough space in buffer, increase size
+				buf = (char *)realloc(buf, bufsize += bufstep);
+			buf[i] = Serial.read();
+			// newline is an indicator of end of message
+			// used for quick, concurrent messages
+			if (buf[i] == '\n')
+				break;
+			i++;
+		}
+		buf[i] = '\0'; // ENSURE null terminator is there
+		// printf("message in buf is: %s\n", buf);
+		if (i < bufsize - bufstep) // decrease to the smallest block that fits buffer
+			buf = (char *)realloc(buf, (bufsize = ((i / bufstep) + 1) * bufstep));
+		Serial.println(buf); // echo commands back
+		// use c string functions, since they are faster than objects
+		static int argc = 0;
+		static char **argv = NULL;
+		if (argc == 0) // first check, set up arguement handler
+			argv = (char **)malloc((argc = 1) * sizeof(char *));
+
+		argv[0] = strtok(buf, " "); // set first string
+		char *inpstr;
+		int x = 1;
+		while (inpstr = strtok(NULL, " ")) // split string into separate args
+		{
+			x++;
+			if (x > argc)													// if need more space for another arg
+				argv = (char **)realloc(argv, (argc = x) * sizeof(char *)); // need to make sure there
+			argv[x - 1] = inpstr;
+		}
+		if (x < argc) // readjust for new number of args
+			argv = (char **)realloc(argv, (argc = x) * sizeof(char *));
+
+		/********************************************************************/
+
+		// now that we have the arguements separated, we can process them
+
+		// first arg is command specifier
+		if (!strcmp(argv[0], "shock")) // shock commands
+		{
+			// Shock *shk;
+			int x;
+			sscanf(argv[1], "%d", &x); // convert arg to int
+			// shk = shocks[x];		   // faster if we have a temp reference to whichever shock we want
+
+			// now that we know which shock, next arg will be either get or set
+			if (!strcmp(argv[2], "set")) // set shock setting
+			{
+				// find which item to set
+				float setpoint;
+				sscanf(argv[4], "%f", &setpoint);
+				if (!strcmp(argv[3], "psi"))
+					puts("set shock psi");
+				// shk->setPressure(setpoint);
+				else if (!strcmp(argv[3], "height"))
+					puts("set shock height");
+				// shk->setHeight(setpoint);
+				else
+					debug_log("Unrecognized shock set arguement");
+			}
+			else if (!strcmp(argv[2], "get"))
+			{
+				// find which item to get
+				char str[32];
+				if (!strcmp(argv[3], "psi"))
+				{
+					// sprintf(str, "%.3f", shk->getPressure());
+					// Serial.println(str);
+					puts("get shock psi");
+				}
+				else if (!strcmp(argv[3], "height"))
+				{
+					// sprintf(str, "%.3f", shk->getHeight());
+					// Serial.println(str);
+					puts("get shock height");
+				}
+				else
+					debug_log("Unrecognized shock 'get' arguement");
+			}
+			else
+				debug_log("Unrecognized shock arguement, must use set/get");
+		}
+		else if (!strcmp(argv[0], "compressor"))
+		{
+			// compressor logic code
+		}
+		else if (!strcmp(argv[0], "help"))
+		{
+			debug_log("Sorry, help command is not yet implemented.");
+		}
+		else
+			debug_log("unrecognized serial command. type 'help' for more info");
+	}
+}

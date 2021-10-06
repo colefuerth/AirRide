@@ -1,0 +1,60 @@
+EEPROM Master Block Layout
+
+0: 
+(1) 01 initialized
+(1) EEPROM version number must match version in firmware
+
+
+20:
+(1) FE initialized
+
+(x) data blocks for objects in main.ino
+
+(1) FF FF FF Terminator
+
+500: Profiles data structure
+
+
+** each object EEPROM storage function will:
+    - be passed the first open address it is allowed to read/write
+    - check first available byte for FE, as initializer byte
+    - Store all values it should store between power cycles
+    - Then, perform a call to child EEPROM blocks, functioning the same as this one
+    - Fill some spare bytes, for adding information later (probably 4 integers/8 bytes or smthn)
+    - Terminate block with FE FE FE, and return the number of bytes consumed (or address of next open byte), for next block to use
+    
+** 0 eeprom value means use default setting in airsettings.h
+
+-------- BLOCKS ----------
+hsensor: (18)
+    - (1) FE initialized
+    - (4) float, high analogRead calibration
+    - (4) float, low analogRead calibration
+    - (4) float, high height mm calibration
+    - (4) float, low height mm calibration
+    - (1) FF Terminator
+
+psensor: (18)
+    - (1) FE initialized
+    - (4) float, high analogRead calibration
+    - (4) float, low analogRead calibration
+    - (4) float, high pressure PSI calibration
+    - (4) float, low pressure PSI calibration
+    - (1) FF Terminator
+
+compressor: (40)
+    - (1) FE initialized
+    - (18) psensor calibration
+    - (4) float, running pressure setting
+    - (4) float, idle pressure setting
+    - (2) int, hysteresis
+    - (2) int, hysteresis setting
+    - (2) int, cooldown time (seconds)
+    - (2) int, running time (seconds)
+    - (1) FF Terminator
+
+shock (38):
+    - (1) FE initialized   
+    - (18) hsensor calibration
+    - (18) psensor calibration
+    - (1) FF Terminator

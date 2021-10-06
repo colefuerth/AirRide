@@ -1,0 +1,4 @@
+hdmi_ignore_edid=0xa5000080
+hdmi_group=2
+hdmi_mode=87
+hdmi_timings=1920 0 0 2 126 720 0 2 2 4 0 0 0 60 0 89456640 8
